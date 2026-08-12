@@ -90,11 +90,6 @@
             transition: border-color 0.3s ease;
         }
 
-        .planner-card-inner {
-            border: 1.5px solid var(--theme-border);
-            border-radius: 0.5rem;
-        }
-
         .planner-border-b {
             border-bottom: 2px solid var(--theme-border);
         }
@@ -179,7 +174,7 @@
         <button @click="goToToday" class="underline text-[11px]">返回今天</button>
     </div>
 
-    <!-- Interactive Mood & Weather Bar (Matching Reference Images) -->
+    <!-- Interactive Mood & Weather Bar -->
     <section class="bg-[#faf6ee] planner-border-b px-3 py-2 flex justify-between items-center text-xs">
         <!-- Mood Selector -->
         <div class="flex items-center gap-1">
@@ -210,8 +205,8 @@
         <!-- TAB 1: TODAY CHECK-IN (今日打卡) -->
         <div v-if="activeTab === 'checkin'" class="space-y-4">
             
-            <!-- Schedule Banner Sticker -->
-            <div class="planner-card p-3.5 bg-graph-paper">
+            <!-- Dynamic Progress Banner Sticker (P1 - 6. 进度条计算逻辑) -->
+            <div class="planner-card p-3.5 bg-graph-paper space-y-2">
                 <div class="flex justify-between items-start">
                     <div>
                         <span class="text-[10px] font-bold font-serif-title uppercase tracking-wider px-2 py-0.5 rounded border border-[var(--theme-border)] bg-[#faf6ee]">
@@ -222,14 +217,26 @@
                         </h2>
                         <p class="text-xs text-slate-700 mt-1 font-medium">{{ currentDayPlan.desc }}</p>
                     </div>
-                    <div class="text-center p-2 rounded-lg border-1.5 border-[var(--theme-border)] bg-[#faf6ee] min-w-[70px]">
+                    <div class="text-center p-2 rounded-lg border-1.5 border-[var(--theme-border)] bg-[#faf6ee] min-w-[75px]">
                         <span class="text-2xl font-bold font-serif-title" style="color: var(--theme-main)">{{ todayCompletionRate }}%</span>
                         <div class="text-[9px] font-bold text-slate-500 uppercase tracking-tight">PROGRESS</div>
                     </div>
                 </div>
+
+                <!-- Visual Progress Bar -->
+                <div class="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden border border-[var(--theme-border)] mt-1">
+                    <div class="h-full transition-all duration-500 rounded-full"
+                         :style="{ width: todayCompletionRate + '%', backgroundColor: 'var(--theme-main)' }"></div>
+                </div>
+                <div class="flex justify-between text-[10px] text-slate-500 font-bold px-0.5">
+                    <span>运动(35%)</span>
+                    <span>内容(35%)</span>
+                    <span>直播(15%)</span>
+                    <span>复盘(15%)</span>
+                </div>
             </div>
 
-            <!-- SECTION: 1. EXERCISE (运动板块) -->
+            <!-- SECTION: 1. EXERCISE (运动板块 - P0-3 组训/普通自适应 + P1-4 跟练链接直达) -->
             <div class="planner-card p-3.5 space-y-3">
                 <div class="flex justify-between items-center planner-border-b pb-2">
                     <div class="flex items-center gap-2">
@@ -245,26 +252,48 @@
                     </span>
                 </div>
 
-                <!-- Select Workout Plan -->
-                <div>
-                    <label class="block text-xs font-bold mb-1">挑选今日执行的运动项目：</label>
-                    <select v-model="todayData.workout.selectedOption" 
+                <!-- Select Workout Plan with Filter Toggle -->
+                <div class="space-y-1.5">
+                    <div class="flex justify-between items-center">
+                        <label class="block text-xs font-bold">选择今日跟练项目：</label>
+                        <button @click="showAllWorkoutOptions = !showAllWorkoutOptions" class="text-[10px] underline font-bold text-slate-600">
+                            {{ showAllWorkoutOptions ? '🔒 按模式自动筛选' : '🔓 显示全量列表' }}
+                        </button>
+                    </div>
+
+                    <select v-model="todayData.workout.selectedOption" @change="saveData()"
                             class="w-full text-xs font-bold bg-[#faf6ee] border-1.5 border-[var(--theme-border)] rounded-lg p-2 outline-none">
                         <option value="" disabled>-- 选择运动路线 --</option>
-                        <optgroup label="普通日（饭后短抗阻三选一）">
+
+                        <!-- 普通日库 -->
+                        <optgroup v-if="!isTrainDay || showAllWorkoutOptions" label="普通日（饭后短抗阻三选一）">
                             <option value="A">备选A｜女性7种静力等长训练</option>
                             <option value="B">备选B｜L0级居家0基础力量前摇</option>
                             <option value="C">备选C｜盘龙棍抗阻训练</option>
                         </optgroup>
-                        <optgroup label="组训日（40-60min六选一）">
+
+                        <!-- 组训日库 -->
+                        <optgroup v-if="isTrainDay || showAllWorkoutOptions" label="组训日（40-60min六选一）">
                             <option value="1">组训①｜欧阳春晓芭杆14天曼妙挑战</option>
                             <option value="2">组训②｜居家练臀专项训练</option>
-                            <option value="3">组训③｜哑铃胸肩跟练</option>
+                            <option value="3">组训③｜20分钟哑铃胸肩跟练</option>
                             <option value="4">组训④｜A等长静力加长版</option>
                             <option value="5">组训⑤｜B力量前摇加长版</option>
                             <option value="6">组训⑥｜盘龙棍加长循环版</option>
                         </optgroup>
                     </select>
+
+                    <!-- P1 - 4. 训练链接可点击跳转 -->
+                    <div v-if="selectedWorkoutUrl" class="mt-2 p-2 bg-amber-50 rounded-lg border border-amber-300 flex justify-between items-center">
+                        <div class="flex items-center gap-1.5 text-xs font-bold text-amber-900">
+                            <span>🔗</span>
+                            <span>已匹配对应跟练视频</span>
+                        </div>
+                        <a :href="selectedWorkoutUrl" target="_blank" 
+                           class="px-2.5 py-1 text-[11px] font-black bg-amber-200 text-amber-950 border border-amber-800 rounded-md hover:bg-amber-300 flex items-center gap-1">
+                            点击直接跳转 <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                        </a>
+                    </div>
                 </div>
 
                 <!-- Randomizer Button -->
@@ -276,13 +305,13 @@
                 <div class="grid grid-cols-2 gap-2 text-xs pt-1">
                     <div>
                         <label class="block text-[10px] font-bold text-slate-600 mb-0.5">用时 (分钟)</label>
-                        <input type="number" v-model.number="todayData.workout.duration" placeholder="例: 30" 
+                        <input type="number" v-model.number="todayData.workout.duration" @change="saveData()" placeholder="例: 30" 
                                class="w-full font-bold bg-[#faf6ee] border-1.5 border-[var(--theme-border)] rounded-lg p-1.5 outline-none">
                     </div>
                     <div>
                         <label class="block text-[10px] font-bold text-slate-600 mb-0.5">身体反馈</label>
-                        <select v-model="todayData.workout.feeling" class="w-full font-bold bg-[#faf6ee] border-1.5 border-[var(--theme-border)] rounded-lg p-1.5 outline-none">
-                            <option value="良好">状态极佳 💪</option>
+                        <select v-model="todayData.workout.feeling" @change="saveData()" class="w-full font-bold bg-[#faf6ee] border-1.5 border-[var(--theme-border)] rounded-lg p-1.5 outline-none">
+                            <option value="状态极佳">状态极佳 💪</option>
                             <option value="略疲惫">略微疲惫 🥱</option>
                             <option value="肌肉酸痛">肌肉酸痛 ⚡</option>
                             <option value="划水完成">轻松划水 🌊</option>
@@ -320,16 +349,16 @@
                 <div class="grid grid-cols-2 gap-2 text-xs">
                     <div class="p-2 bg-graph-paper rounded-lg border-1.5 border-[var(--theme-border)]">
                         <span class="text-slate-600 text-[10px] font-bold block">标记素材数</span>
-                        <input type="number" v-model.number="todayData.content.materialCount" placeholder="0" class="w-full bg-transparent font-bold text-base outline-none font-serif-title">
+                        <input type="number" v-model.number="todayData.content.materialCount" @change="saveData()" placeholder="0" class="w-full bg-transparent font-bold text-base outline-none font-serif-title">
                     </div>
                     <div class="p-2 bg-graph-paper rounded-lg border-1.5 border-[var(--theme-border)]">
                         <span class="text-slate-600 text-[10px] font-bold block">发布视频条数</span>
-                        <input type="number" v-model.number="todayData.content.publishedCount" placeholder="0" class="w-full bg-transparent font-bold text-base outline-none font-serif-title">
+                        <input type="number" v-model.number="todayData.content.publishedCount" @change="saveData()" placeholder="0" class="w-full bg-transparent font-bold text-base outline-none font-serif-title">
                     </div>
                 </div>
 
                 <div>
-                    <input type="text" v-model="todayData.content.note" placeholder="简要笔记（例：剪辑顺畅 / 耗时35min）"
+                    <input type="text" v-model="todayData.content.note" @change="saveData()" placeholder="简要笔记（例：剪辑顺畅 / 耗时35min）"
                            class="w-full text-xs font-bold bg-[#faf6ee] border-1.5 border-[var(--theme-border)] rounded-lg p-2 outline-none">
                 </div>
 
@@ -343,7 +372,7 @@
                 </div>
             </div>
 
-            <!-- SECTION: 3. LIVE STREAMING (直播板块) -->
+            <!-- SECTION: 3. LIVE STREAMING (直播板块 - P0-2 扩展标题文案与封面描述) -->
             <div class="planner-card p-3.5 space-y-3">
                 <div class="flex justify-between items-center planner-border-b pb-2">
                     <div class="flex items-center gap-2">
@@ -361,14 +390,14 @@
 
                 <div class="flex items-center justify-between bg-graph-paper p-2 rounded-lg border-1.5 border-[var(--theme-border)] text-xs">
                     <span class="font-bold">今天是否有开播计划？</span>
-                    <input type="checkbox" v-model="todayData.live.hasLive" @change="saveData" class="w-4 h-4 accent-amber-700 rounded">
+                    <input type="checkbox" v-model="todayData.live.hasLive" @change="saveData()" class="w-4 h-4 accent-amber-700 rounded">
                 </div>
 
                 <div v-if="todayData.live.hasLive" class="space-y-2 text-xs pt-0.5">
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="block text-[10px] font-bold text-slate-600 mb-0.5">测试标题风格</label>
-                            <select v-model="todayData.live.titleStyle" class="w-full font-bold bg-[#faf6ee] border-1.5 border-[var(--theme-border)] rounded-lg p-1.5 outline-none">
+                            <select v-model="todayData.live.titleStyle" @change="saveData()" class="w-full font-bold bg-[#faf6ee] border-1.5 border-[var(--theme-border)] rounded-lg p-1.5 outline-none">
                                 <option value="教学">干货教学型</option>
                                 <option value="互动">互动挑战型</option>
                                 <option value="情绪">情绪共鸣型</option>
@@ -377,7 +406,7 @@
                         </div>
                         <div>
                             <label class="block text-[10px] font-bold text-slate-600 mb-0.5">测试封面风格</label>
-                            <select v-model="todayData.live.coverStyle" class="w-full font-bold bg-[#faf6ee] border-1.5 border-[var(--theme-border)] rounded-lg p-1.5 outline-none">
+                            <select v-model="todayData.live.coverStyle" @change="saveData()" class="w-full font-bold bg-[#faf6ee] border-1.5 border-[var(--theme-border)] rounded-lg p-1.5 outline-none">
                                 <option value="露脸">人物露脸+大字</option>
                                 <option value="高光">游戏高光截图</option>
                                 <option value="纯字">纯文字冲击型</option>
@@ -386,34 +415,43 @@
                         </div>
                     </div>
 
-                    <div>
-                        <input type="text" v-model="todayData.live.titleText" placeholder="填入今日直播标题" 
-                               class="w-full font-bold bg-[#faf6ee] border-1.5 border-[var(--theme-border)] rounded-lg p-2 outline-none">
+                    <!-- P0 - 2. 具体标题与封面文案细节记录 -->
+                    <div class="space-y-2">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-600 mb-0.5">今日具体标题文案：</label>
+                            <input type="text" v-model="todayData.live.titleText" @change="saveData()" placeholder="如：新英雄连招教学，有手就行" 
+                                   class="w-full font-bold bg-[#faf6ee] border-1.5 border-[var(--theme-border)] rounded-lg p-2 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-600 mb-0.5">今日封面具体描述/备注：</label>
+                            <input type="text" v-model="todayData.live.coverDesc" @change="saveData()" placeholder="如：黄色粗体大字 + 露脸笑脸照" 
+                                   class="w-full font-bold bg-[#faf6ee] border-1.5 border-[var(--theme-border)] rounded-lg p-2 outline-none">
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-3 gap-2 text-center">
                         <div class="p-1.5 bg-graph-paper rounded-lg border-1.5 border-[var(--theme-border)]">
                             <span class="text-[9px] font-bold text-slate-500 uppercase block">累积场观</span>
-                            <input type="number" v-model.number="todayData.live.viewers" placeholder="0" class="w-full bg-transparent text-center font-bold text-sm font-serif-title outline-none">
+                            <input type="number" v-model.number="todayData.live.viewers" @change="saveData()" placeholder="0" class="w-full bg-transparent text-center font-bold text-sm font-serif-title outline-none">
                         </div>
                         <div class="p-1.5 bg-graph-paper rounded-lg border-1.5 border-[var(--theme-border)]">
                             <span class="text-[9px] font-bold text-slate-500 uppercase block">最高在线</span>
-                            <input type="number" v-model.number="todayData.live.peakOnline" placeholder="0" class="w-full bg-transparent text-center font-bold text-sm font-serif-title outline-none">
+                            <input type="number" v-model.number="todayData.live.peakOnline" @change="saveData()" placeholder="0" class="w-full bg-transparent text-center font-bold text-sm font-serif-title outline-none">
                         </div>
                         <div class="p-1.5 bg-graph-paper rounded-lg border-1.5 border-[var(--theme-border)]">
                             <span class="text-[9px] font-bold text-slate-500 uppercase block">新增关注</span>
-                            <input type="number" v-model.number="todayData.live.newFollows" placeholder="0" class="w-full bg-transparent text-center font-bold text-sm font-serif-title outline-none">
+                            <input type="number" v-model.number="todayData.live.newFollows" @change="saveData()" placeholder="0" class="w-full bg-transparent text-center font-bold text-sm font-serif-title outline-none">
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- SECTION: 4. DAILY PDCA REFLECTION (每日极简PDCA) -->
+            <!-- SECTION: 4. DAILY PDCA REFLECTION -->
             <div class="planner-card p-3.5 space-y-2 bg-lined-paper">
                 <h3 class="font-bold text-sm font-serif-title flex items-center gap-1">
                     <span>✍️</span> 今日 5 分钟复盘 Notes (C/A)
                 </h3>
-                <textarea v-model="todayData.pdcaReflection" placeholder="写下今日遇到的微小卡顿与明日调整点..."
+                <textarea v-model="todayData.pdcaReflection" @change="saveData()" placeholder="写下今日遇到的微小卡顿与明日调整点..."
                           rows="3" class="w-full text-xs font-bold bg-transparent border-1.5 border-[var(--theme-border)] rounded-lg p-2 outline-none leading-relaxed"></textarea>
                 <button @click="saveData(true)" class="w-full planner-btn-active font-bold text-xs py-2.5 rounded-lg flex items-center justify-center gap-1.5 shadow-sm">
                     <i class="fa-solid fa-bookmark text-xs"></i> 保存今日手帐记录
@@ -422,19 +460,40 @@
 
         </div>
 
-        <!-- TAB 2: MATERIAL LOG HELPER (素材速记助手) -->
+        <!-- TAB 2: MATERIAL LOG HELPER (P0-1 完整快捷命令解析 & 导出) -->
         <div v-if="activeTab === 'material'" class="space-y-4">
-            <div class="planner-card p-3.5 space-y-3">
+            
+            <!-- Quick Command Parser Box -->
+            <div class="planner-card p-3.5 space-y-3 bg-graph-paper">
                 <div class="flex justify-between items-center planner-border-b pb-2">
                     <h2 class="font-bold text-sm font-serif-title flex items-center gap-1.5">
-                        <span>✂️</span> `!素材` 直播快捷记录
+                        <span>⚡</span> `!素材` 快捷指令解析器
                     </h2>
-                    <span class="text-[10px] font-bold border border-[var(--theme-border)] px-1.5 py-0.5 rounded bg-[#faf6ee]">N卡三分钟回顾</span>
+                    <span class="text-[10px] font-bold border border-[var(--theme-border)] px-1.5 py-0.5 rounded bg-[#faf6ee]">自动提取</span>
                 </div>
 
-                <p class="text-xs text-slate-700 font-medium">直播过程随时记下高光时间点，快捷生成剪辑索引：</p>
+                <p class="text-xs text-slate-700 font-medium">支持直接粘贴或输入整行文本（例：<code class="bg-amber-100 px-1 rounded font-bold">!素材 15:20 击杀 残血1v3极限反杀</code>），自动提取格式：</p>
 
-                <!-- Input Form -->
+                <div class="space-y-2 text-xs">
+                    <div class="flex gap-2">
+                        <input type="text" v-model="quickRawInput" @keyup.enter="parseQuickInput"
+                               placeholder="粘贴例如: !素材 15:20 击杀 极速三杀..." 
+                               class="flex-1 font-bold bg-[#faf6ee] border-1.5 border-[var(--theme-border)] rounded-lg p-2 outline-none">
+                        <button @click="parseQuickInput" class="planner-btn-active px-3 py-2 rounded-lg font-bold whitespace-nowrap">
+                            一键解析添加
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Manual Material Form -->
+            <div class="planner-card p-3.5 space-y-3">
+                <div class="flex justify-between items-center planner-border-b pb-2">
+                    <h3 class="font-bold text-sm font-serif-title flex items-center gap-1.5">
+                        <span>✂️</span> 常规素材表单录入
+                    </h3>
+                </div>
+
                 <div class="space-y-2 text-xs pt-1">
                     <div class="grid grid-cols-2 gap-2">
                         <div>
@@ -474,11 +533,16 @@
                 </div>
             </div>
 
-            <!-- Material List -->
+            <!-- Material List & Export -->
             <div class="planner-card p-3.5 space-y-3">
                 <div class="flex justify-between items-center planner-border-b pb-2">
                     <h3 class="font-bold text-sm font-serif-title">📑 今日已记素材 ({{ todayMaterials.length }})</h3>
-                    <button v-if="todayMaterials.length > 0" @click="clearMaterials" class="text-[10px] text-red-700 font-bold hover:underline">清空</button>
+                    <div class="flex gap-2" v-if="todayMaterials.length > 0">
+                        <button @click="exportAllMaterials" class="text-[10px] bg-amber-200 border border-amber-800 font-bold px-2 py-0.5 rounded hover:bg-amber-300">
+                            📋 一键复制全部清单
+                        </button>
+                        <button @click="clearMaterials" class="text-[10px] text-red-700 font-bold hover:underline">清空</button>
+                    </div>
                 </div>
 
                 <div v-if="todayMaterials.length === 0" class="text-center py-6 text-slate-400 text-xs font-bold">
@@ -490,7 +554,7 @@
                     <div v-for="(m, idx) in todayMaterials" :key="idx" 
                          class="p-2 bg-[#faf6ee] rounded-lg border-1.5 border-[var(--theme-border)] flex items-center justify-between text-xs">
                         <div class="flex items-center gap-2">
-                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold border border-[var(--theme-border)]"
+                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold border border-[var(--theme-border)] shrink-0"
                                   :class="{
                                       'bg-red-100 text-red-900': m.type==='击杀',
                                       'bg-amber-100 text-amber-900': m.type==='搞笑',
@@ -500,10 +564,10 @@
                                   }">
                                 {{ m.type }}
                             </span>
-                            <span class="font-mono text-slate-500 font-bold text-[11px]">{{ m.time }}</span>
-                            <span class="font-bold">{{ m.desc }}</span>
+                            <span class="font-mono text-slate-500 font-bold text-[11px] shrink-0">{{ m.time }}</span>
+                            <span class="font-bold text-slate-800 truncate">{{ m.desc }}</span>
                         </div>
-                        <button @click="removeMaterial(idx)" class="text-slate-400 hover:text-red-600 font-bold px-1">
+                        <button @click="removeMaterial(idx)" class="text-slate-400 hover:text-red-600 font-bold px-1 ml-1 shrink-0">
                             <i class="fa-solid fa-xmark"></i>
                         </button>
                     </div>
@@ -511,85 +575,143 @@
             </div>
         </div>
 
-        <!-- TAB 3: LIVE ANALYTICS (直播测验与数据) -->
+        <!-- TAB 3: LIVE ANALYTICS (P1-5 直播数据历史对比表) -->
         <div v-if="activeTab === 'live'" class="space-y-4">
+            
+            <!-- Historical Live Comparison Table -->
             <div class="planner-card p-3.5 space-y-3">
-                <h2 class="font-bold text-sm font-serif-title flex items-center gap-1.5 planner-border-b pb-2">
-                    <span>📊</span> A/B 测试对照看板
-                </h2>
-                <p class="text-xs text-slate-700 font-medium">每周只测试一个变量（标题或封面），找出爆款方案：</p>
-
-                <div class="grid grid-cols-2 gap-2 text-xs">
-                    <div class="p-2 bg-graph-paper rounded-lg border-1.5 border-[var(--theme-border)]">
-                        <span class="font-bold font-serif-title block mb-0.5">第 1 周：测标题 🏷️</span>
-                        <p class="text-[10px] text-slate-600">固定封面不变，切换 4 种标题风格</p>
-                    </div>
-                    <div class="p-2 bg-graph-paper rounded-lg border-1.5 border-[var(--theme-border)]">
-                        <span class="font-bold font-serif-title block mb-0.5">第 2 周：测封面 🖼️</span>
-                        <p class="text-[10px] text-slate-600">使用高分标题，切换 4 种封面风格</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Historical Live Data Summary -->
-            <div class="planner-card p-3.5 space-y-3">
-                <h3 class="font-bold text-sm font-serif-title planner-border-b pb-2">📜 历史开播数据</h3>
-
-                <div v-if="liveRecords.length === 0" class="text-center py-6 text-slate-400 text-xs font-bold">
-                    暂无开播记录，打卡页勾选“今日有开播”并保存即可自动生成。
+                <div class="flex justify-between items-center planner-border-b pb-2">
+                    <h2 class="font-bold text-sm font-serif-title flex items-center gap-1.5">
+                        <span>📊</span> 直播 A/B 测试对比看板
+                    </h2>
+                    <span class="text-[10px] font-bold border border-[var(--theme-border)] px-1.5 py-0.5 rounded bg-[#faf6ee]">
+                        已存 {{ liveRecords.length }} 场
+                    </span>
                 </div>
 
-                <div v-else class="space-y-2.5">
-                    <div v-for="(rec, i) in liveRecords" :key="i" class="p-2.5 bg-[#faf6ee] rounded-lg border-1.5 border-[var(--theme-border)] text-xs space-y-1.5">
-                        <div class="flex justify-between items-center">
+                <!-- Filter Controls -->
+                <div class="grid grid-cols-2 gap-2 text-xs bg-graph-paper p-2 rounded-lg border border-[var(--theme-border)]">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">按标题风格筛选</label>
+                        <select v-model="liveFilterTitle" class="w-full font-bold bg-[#faf6ee] border border-[var(--theme-border)] rounded p-1 outline-none text-[11px]">
+                            <option value="ALL">全部标题风格</option>
+                            <option value="教学">干货教学型</option>
+                            <option value="互动">互动挑战型</option>
+                            <option value="情绪">情绪共鸣型</option>
+                            <option value="悬念">悬念好奇型</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">按封面风格筛选</label>
+                        <select v-model="liveFilterCover" class="w-full font-bold bg-[#faf6ee] border border-[var(--theme-border)] rounded p-1 outline-none text-[11px]">
+                            <option value="ALL">全部封面风格</option>
+                            <option value="露脸">人物露脸+大字</option>
+                            <option value="高光">游戏高光截图</option>
+                            <option value="纯字">纯文字冲击型</option>
+                            <option value="搞笑">表情包/搞笑型</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div v-if="filteredLiveRecords.length === 0" class="text-center py-6 text-slate-400 text-xs font-bold">
+                    无匹配的历史直播记录。
+                </div>
+
+                <!-- Comparison Cards -->
+                <div v-else class="space-y-3">
+                    <div v-for="(rec, i) in filteredLiveRecords" :key="i" class="p-3 bg-[#faf6ee] rounded-lg border-1.5 border-[var(--theme-border)] text-xs space-y-2 shadow-xs">
+                        <div class="flex justify-between items-center planner-border-b pb-1.5">
                             <span class="font-bold font-serif-title text-sm">{{ rec.date }}</span>
                             <div class="flex gap-1">
-                                <span class="bg-amber-100 text-amber-900 text-[10px] px-1.5 py-0.5 rounded font-bold border border-[var(--theme-border)]">标题: {{ rec.titleStyle }}</span>
-                                <span class="bg-sky-100 text-sky-900 text-[10px] px-1.5 py-0.5 rounded font-bold border border-[var(--theme-border)]">封面: {{ rec.coverStyle }}</span>
+                                <span class="bg-amber-100 text-amber-900 text-[10px] px-1.5 py-0.5 rounded font-bold border border-[var(--theme-border)]">
+                                    标题: {{ rec.titleStyle }}
+                                </span>
+                                <span class="bg-sky-100 text-sky-900 text-[10px] px-1.5 py-0.5 rounded font-bold border border-[var(--theme-border)]">
+                                    封面: {{ rec.coverStyle }}
+                                </span>
                             </div>
                         </div>
-                        <p class="text-slate-700 text-[11px] font-bold italic" v-if="rec.titleText">“{{ rec.titleText }}”</p>
-                        <div class="grid grid-cols-3 gap-1 pt-1 text-[11px] border-t border-dashed border-slate-300">
-                            <div>场观: <strong>{{ rec.viewers }}</strong></div>
-                            <div>峰值: <strong>{{ rec.peakOnline }}</strong></div>
-                            <div>涨粉: <strong>{{ rec.newFollows }}</strong></div>
+
+                        <!-- Specific Title & Cover Details -->
+                        <div class="space-y-1 bg-graph-paper p-2 rounded border border-slate-300 text-[11px]">
+                            <p class="font-bold text-slate-800">
+                                📌 <span class="text-slate-500">标题：</span>{{ rec.titleText || '未填写具体文案' }}
+                            </p>
+                            <p class="font-bold text-slate-800">
+                                🖼️ <span class="text-slate-500">封面：</span>{{ rec.coverDesc || '未填写具体描述' }}
+                            </p>
+                        </div>
+
+                        <!-- Key Metrics Grid -->
+                        <div class="grid grid-cols-3 gap-1 pt-1 text-center font-mono">
+                            <div class="p-1 bg-amber-50 rounded border border-amber-200">
+                                <span class="text-[9px] text-slate-500 block">累积场观</span>
+                                <strong class="text-sm font-serif-title text-amber-900">{{ rec.viewers }}</strong>
+                            </div>
+                            <div class="p-1 bg-sky-50 rounded border border-sky-200">
+                                <span class="text-[9px] text-slate-500 block">最高在线</span>
+                                <strong class="text-sm font-serif-title text-sky-900">{{ rec.peakOnline }}</strong>
+                            </div>
+                            <div class="p-1 bg-emerald-50 rounded border border-emerald-200">
+                                <span class="text-[9px] text-slate-500 block">新增关注</span>
+                                <strong class="text-sm font-serif-title text-emerald-900">+{{ rec.newFollows }}</strong>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- TAB 4: WEEKLY REVIEW (周度复盘) -->
+        <!-- TAB 4: WEEKLY REVIEW (P2-7 周复盘自动汇总 + P2-9 训练完成率统计) -->
         <div v-if="activeTab === 'weekly'" class="space-y-4">
+            
+            <!-- Automated Aggregate Stats Banner -->
             <div class="planner-card p-3.5 space-y-3 bg-graph-paper">
                 <div class="flex justify-between items-center planner-border-b pb-2">
                     <h2 class="font-bold text-sm font-serif-title flex items-center gap-1.5">
-                        <span>📈</span> 本周执行小结
+                        <span>📈</span> 本周自动汇总数据 (7日)
                     </h2>
-                    <span class="text-xs px-2 py-0.5 rounded font-bold border border-[var(--theme-border)] bg-[#faf6ee]">
-                        完成率 {{ weeklyStats.completionRate }}%
-                    </span>
+                    <button @click="copyWeeklyReport" class="text-[10px] bg-amber-200 border border-amber-800 font-bold px-2 py-0.5 rounded hover:bg-amber-300">
+                        📋 导出周报文本
+                    </button>
                 </div>
 
                 <div class="grid grid-cols-3 gap-2 text-center pt-1">
                     <div class="p-2 bg-[#faf6ee] rounded-lg border-1.5 border-[var(--theme-border)]">
-                        <div class="text-lg font-bold font-serif-title">{{ weeklyStats.workoutDays }}/7</div>
-                        <div class="text-[9px] font-bold text-slate-500">运动天数</div>
+                        <div class="text-lg font-bold font-serif-title" style="color: var(--theme-main)">
+                            {{ weeklyAutoStats.workoutDays }}/7 天
+                        </div>
+                        <div class="text-[9px] font-bold text-slate-500">运动总时长 {{ weeklyAutoStats.workoutMinutes }}m</div>
                     </div>
                     <div class="p-2 bg-[#faf6ee] rounded-lg border-1.5 border-[var(--theme-border)]">
-                        <div class="text-lg font-bold font-serif-title">{{ weeklyStats.publishedCount }}</div>
-                        <div class="text-[9px] font-bold text-slate-500">已发视频</div>
+                        <div class="text-lg font-bold font-serif-title" style="color: var(--theme-main)">
+                            {{ weeklyAutoStats.publishedCount }} 条
+                        </div>
+                        <div class="text-[9px] font-bold text-slate-500">已发视频/标记{{ weeklyAutoStats.materialCount }}素材</div>
                     </div>
                     <div class="p-2 bg-[#faf6ee] rounded-lg border-1.5 border-[var(--theme-border)]">
-                        <div class="text-lg font-bold font-serif-title">{{ weeklyStats.liveCount }}</div>
-                        <div class="text-[9px] font-bold text-slate-500">直播场次</div>
+                        <div class="text-lg font-bold font-serif-title" style="color: var(--theme-main)">
+                            {{ weeklyAutoStats.liveCount }} 场
+                        </div>
+                        <div class="text-[9px] font-bold text-slate-500">场均场观 {{ weeklyAutoStats.avgViewers }}</div>
+                    </div>
+                </div>
+
+                <!-- P2 - 9. 身体反馈与跟练偏好统计 -->
+                <div class="p-2 bg-[#faf6ee] rounded-lg border border-[var(--theme-border)] text-xs space-y-1">
+                    <span class="font-bold text-[11px] block border-b border-slate-300 pb-1">⚡ 身体反馈统计：</span>
+                    <div class="grid grid-cols-4 text-center pt-0.5 font-bold text-[10px]">
+                        <div>💪 状态佳: {{ weeklyAutoStats.feelingMap['状态极佳'] || 0 }}</div>
+                        <div>🥱 略疲惫: {{ weeklyAutoStats.feelingMap['略疲惫'] || 0 }}</div>
+                        <div>⚡ 酸痛: {{ weeklyAutoStats.feelingMap['肌肉酸痛'] || 0 }}</div>
+                        <div>🌊 划水: {{ weeklyAutoStats.feelingMap['划水完成'] || 0 }}</div>
                     </div>
                 </div>
             </div>
 
             <!-- Weekly Reflection Form -->
             <div class="planner-card p-3.5 space-y-3 bg-lined-paper">
-                <h3 class="font-bold text-sm font-serif-title planner-border-b pb-2">📝 周末总结便签</h3>
+                <h3 class="font-bold text-sm font-serif-title planner-border-b pb-2">📝 周末总结便签 (定性分析)</h3>
 
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">1. 本周保持良好的地方：</label>
@@ -612,7 +734,7 @@
             </div>
         </div>
 
-        <!-- TAB 5: MANUAL DICTIONARY (手册速查库) -->
+        <!-- TAB 5: MANUAL DICTIONARY (手册速查库 - 附带跟练入口) -->
         <div v-if="activeTab === 'ref'" class="space-y-4">
             <div class="planner-card p-3.5 space-y-2 bg-graph-paper">
                 <h2 class="font-bold text-sm font-serif-title flex items-center gap-1.5">
@@ -626,20 +748,9 @@
                 <h3 class="font-bold text-sm font-serif-title planner-border-b pb-1.5">🏋️‍♀️ 运动跟练快速入口</h3>
 
                 <div class="space-y-2 text-xs pt-1">
-                    <a href="https://v.douyin.com/UJreK3y00v0/" target="_blank" class="p-2 bg-[#faf6ee] border-1.5 border-[var(--theme-border)] rounded-lg font-bold flex justify-between items-center block">
-                        <span>备选A｜女性7种静力等长训练</span>
-                        <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
-                    </a>
-                    <a href="https://v.douyin.com/wb4BBNK_HgI/" target="_blank" class="p-2 bg-[#faf6ee] border-1.5 border-[var(--theme-border)] rounded-lg font-bold flex justify-between items-center block">
-                        <span>备选B｜L0级居家0基础力量前摇</span>
-                        <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
-                    </a>
-                    <a href="https://v.douyin.com/K6epfVQFbso/" target="_blank" class="p-2 bg-[#faf6ee] border-1.5 border-[var(--theme-border)] rounded-lg font-bold flex justify-between items-center block">
-                        <span>组训①｜欧阳春晓芭杆14天挑战</span>
-                        <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
-                    </a>
-                    <a href="https://v.douyin.com/6Q59gN9RWYI/" target="_blank" class="p-2 bg-[#faf6ee] border-1.5 border-[var(--theme-border)] rounded-lg font-bold flex justify-between items-center block">
-                        <span>组训②｜居家练臀专项训练</span>
+                    <a v-for="(url, key) in workoutUrlMap" :key="key" :href="url" target="_blank" 
+                       class="p-2 bg-[#faf6ee] border-1.5 border-[var(--theme-border)] rounded-lg font-bold flex justify-between items-center block hover:bg-amber-100">
+                        <span>{{ workoutNameMap[key] }}</span>
                         <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
                     </a>
                 </div>
@@ -719,9 +830,9 @@
                 <span>📖</span> 复古 Daily Planner 使用小贴士
             </h3>
             <div class="text-xs text-slate-700 space-y-2 font-medium leading-relaxed">
-                <p>1. <strong>顶部主题：</strong> 点击右上角可随心切换【海军蓝】与【酒红】两款质感纸张配色。</p>
-                <p>2. <strong>Mood & Weather：</strong> 每天可记录今日心情与天气状态。</p>
-                <p>3. <strong>摇号消除纠结：</strong> 运动板块内置摇号算法，点击即可帮你随机决定今日跟练。</p>
+                <p>1. <strong>`!素材` 指令：</strong> 在速记页直接粘贴如 `!素材 15:20 击杀 残血反杀` 即可自动提取加入清单。</p>
+                <p>2. <strong>智能筛选与跳转：</strong> 周二/四/六自动筛选组训项目，其他时间显示普通日项目，选中后可直接点击链接跳转抖音跟练。</p>
+                <p>3. <strong>动态达成率：</strong> 涵盖运动(35%)、内容(35%)、直播(15%)与复盘(15%)四大指标动态计算。</p>
             </div>
             <button @click="showInfoModal = false" class="w-full planner-btn-active font-bold text-xs py-2 rounded-lg">
                 确定并关闭
@@ -738,7 +849,39 @@
         setup() {
             const activeTab = ref('checkin');
             const showInfoModal = ref(false);
-            const theme = ref('navy'); // 'navy' or 'wine'
+            const theme = ref('navy');
+
+            const showAllWorkoutOptions = ref(false);
+            const liveFilterTitle = ref('ALL');
+            const liveFilterCover = ref('ALL');
+            const quickRawInput = ref('');
+
+            const workoutUrlMap = {
+                'A': 'https://v.douyin.com/UJreK3y00v0/',
+                'B': 'https://v.douyin.com/wb4BBNK_HgI/',
+                '1': 'https://v.douyin.com/K6epfVQFbso/',
+                '2': 'https://v.douyin.com/6Q59gN9RWYI/',
+                '3': 'https://v.douyin.com/z80vxASa1Uk/',
+                '4': 'https://v.douyin.com/UJreK3y00v0/',
+                '5': 'https://v.douyin.com/wb4BBNK_HgI/'
+            };
+
+            const workoutNameMap = {
+                'A': '备选A｜女性7种静力等长训练',
+                'B': '备选B｜L0级居家0基础力量前摇',
+                'C': '备选C｜盘龙棍抗阻训练',
+                '1': '组训①｜欧阳春晓芭杆14天挑战',
+                '2': '组训②｜居家练臀专项训练',
+                '3': '组训③｜哑铃胸肩跟练',
+                '4': '组训④｜A等长静力加长版',
+                '5': '组训⑤｜B力量前摇加长版',
+                '6': '组训⑥｜盘龙棍加长循环版'
+            };
+
+            const selectedWorkoutUrl = computed(() => {
+                const opt = todayData.value.workout.selectedOption;
+                return workoutUrlMap[opt] || '';
+            });
 
             const applyTheme = (newTheme) => {
                 theme.value = newTheme;
@@ -756,7 +899,6 @@
                 showToast(`已切换至【${nextTheme === 'navy' ? '典雅海军蓝' : '复古葡萄酒红'}】主题 ✨`);
             };
 
-            // Moods & Weathers from reference images
             const moods = [
                 { id: 'happy', icon: '😄' },
                 { id: 'smile', icon: '😊' },
@@ -773,14 +915,12 @@
                 { id: 'snowy', icon: '❄️' }
             ];
 
-            // Toast message
             const toast = ref({ show: false, msg: '' });
             const showToast = (msg) => {
                 toast.value = { show: true, msg };
                 setTimeout(() => { toast.value.show = false; }, 2200);
             };
 
-            // 日期处理与导航逻辑
             const getTodayStr = () => {
                 const d = new Date();
                 const y = d.getFullYear();
@@ -804,10 +944,6 @@
             const displayDayOfWeek = computed(() => daysMap[dateObj.value.getDay()]);
             const dayNum = computed(() => dateObj.value.getDay());
 
-            const todayFormatted = computed(() => selectedDate.value);
-            const todayDayOfWeek = computed(() => displayDayOfWeek.value);
-
-            // 日期切换方法
             const navigateDate = (days) => {
                 saveData(false);
                 const current = new Date(dateObj.value);
@@ -831,7 +967,6 @@
                 loadDataForDate(selectedDate.value);
             };
 
-            // 依据选定日期的星期自动适配计划
             const planSchedule = {
                 1: { title: 'MONDAY · 周一计划', desc: '饭后短抗阻 + 确定3个选题 + 直播打素材', train: false, publish: false },
                 2: { title: 'TUESDAY · 周二计划', desc: '组训40-60min + 剪辑发布第1条 (不直播)', train: true, publish: true },
@@ -846,7 +981,6 @@
             const isTrainDay = computed(() => currentDayPlan.value.train);
             const isPublishDay = computed(() => currentDayPlan.value.publish);
 
-            // 任意日期的默认数据生成器
             const getDefaultTodayData = (dateStr) => {
                 const parts = dateStr.split('-');
                 const d = parts.length === 3 ? new Date(parts[0], parts[1] - 1, parts[2]) : new Date();
@@ -872,6 +1006,7 @@
                         titleStyle: '教学',
                         coverStyle: '高光',
                         titleText: '',
+                        coverDesc: '',
                         viewers: null,
                         peakOnline: null,
                         newFollows: null
@@ -882,30 +1017,64 @@
 
             const todayData = ref(getDefaultTodayData(selectedDate.value));
 
-            const setMood = (mId) => {
-                todayData.value.mood = mId;
-                saveData();
-            };
+            const setMood = (mId) => { todayData.value.mood = mId; saveData(); };
+            const setWeather = (wId) => { todayData.value.weather = wId; saveData(); };
 
-            const setWeather = (wId) => {
-                todayData.value.weather = wId;
-                saveData();
-            };
-
-            // Material
-            const newMaterial = ref({
-                time: '15:20',
-                type: '击杀',
-                desc: ''
-            });
+            const newMaterial = ref({ time: '15:20', type: '击杀', desc: '' });
             const todayMaterials = ref([]);
 
             const materialFormattedPreview = computed(() => {
                 return `!素材 ${newMaterial.value.time || '00:00'} ${newMaterial.value.type} ${newMaterial.value.desc || '未命名片段'}`;
             });
 
+            // Quick Input Command Parser
+            const parseQuickInput = () => {
+                const str = quickRawInput.value.trim();
+                if (!str) return;
+                
+                // Remove optional leading !素材
+                let clean = str.replace(/^!素材\s*/, '');
+                let parts = clean.split(/\s+/);
+                
+                let time = '00:00';
+                let type = '击杀';
+                let desc = '';
+
+                if (parts.length >= 3) {
+                    time = parts[0];
+                    type = parts[1];
+                    desc = parts.slice(2).join(' ');
+                } else if (parts.length === 2) {
+                    time = parts[0];
+                    desc = parts[1];
+                } else {
+                    desc = clean;
+                }
+
+                todayMaterials.value.push({ time, type, desc });
+                todayData.value.content.materialCount = todayMaterials.value.length;
+                quickRawInput.value = '';
+                saveData();
+                showToast('已通过快捷解析添加素材！');
+            };
+
+            const exportAllMaterials = () => {
+                if (todayMaterials.value.length === 0) return;
+                const text = todayMaterials.value.map(m => `!素材 ${m.time} ${m.type} ${m.desc}`).join('\n');
+                copyText(text);
+                showToast('已复制全部素材清单！');
+            };
+
             const liveRecords = ref([]);
             const weeklyNote = ref({ goodPoints: '', problems: '', nextAction: '' });
+
+            const filteredLiveRecords = computed(() => {
+                return liveRecords.value.filter(rec => {
+                    const matchTitle = liveFilterTitle.value === 'ALL' || rec.titleStyle === liveFilterTitle.value;
+                    const matchCover = liveFilterCover.value === 'ALL' || rec.coverStyle === liveFilterCover.value;
+                    return matchTitle && matchCover;
+                });
+            });
 
             const randomizeWorkout = () => {
                 if (isTrainDay.value) {
@@ -915,14 +1084,27 @@
                     const group = ['A', 'B', 'C'];
                     todayData.value.workout.selectedOption = group[Math.floor(Math.random() * group.length)];
                 }
+                saveData();
                 showToast('已随机挑选运动项目！直接开始练吧');
             };
 
+            // Dynamic Completion Calculation
             const todayCompletionRate = computed(() => {
                 let score = 0;
-                if (todayData.value.workout.completed) score += 40;
-                if (todayData.value.content.completed) score += 40;
-                if (todayData.value.pdcaReflection && todayData.value.pdcaReflection.trim() !== '') score += 20;
+                if (todayData.value.workout.completed) score += 35;
+                if (todayData.value.content.completed) score += 35;
+                
+                // Live Stream Completion
+                if (!todayData.value.live.hasLive) {
+                    score += 15; // 休播日自动计分
+                } else if (todayData.value.live.viewers !== null && todayData.value.live.viewers >= 0) {
+                    score += 15;
+                }
+
+                // Reflection Note
+                if (todayData.value.pdcaReflection && todayData.value.pdcaReflection.trim() !== '') {
+                    score += 15;
+                }
                 return score;
             });
 
@@ -933,12 +1115,10 @@
                 el.select();
                 document.execCommand('copy');
                 document.body.removeChild(el);
-                showToast('已成功复制文本');
+                showToast('已成功复制到剪贴板');
             };
 
-            const copyMaterialText = () => {
-                copyText(materialFormattedPreview.value);
-            };
+            const copyMaterialText = () => copyText(materialFormattedPreview.value);
 
             const addMaterial = () => {
                 if (!newMaterial.value.desc.trim()) {
@@ -978,14 +1158,15 @@
                         todayMaterials: todayMaterials.value
                     }));
 
-                    if (todayData.value.live.hasLive && todayData.value.live.viewers) {
+                    if (todayData.value.live.hasLive) {
                         let records = JSON.parse(localStorage.getItem(LIVE_RECORDS_KEY) || '[]');
                         records = records.filter(r => r.date !== selectedDate.value);
                         records.unshift({
                             date: selectedDate.value,
                             titleStyle: todayData.value.live.titleStyle,
                             coverStyle: todayData.value.live.coverStyle,
-                            titleText: todayData.value.live.titleText,
+                            titleText: todayData.value.live.titleText || '',
+                            coverDesc: todayData.value.live.coverDesc || '',
                             viewers: todayData.value.live.viewers || 0,
                             peakOnline: todayData.value.live.peakOnline || 0,
                             newFollows: todayData.value.live.newFollows || 0
@@ -995,9 +1176,7 @@
                     }
 
                     if (notify) showToast('手帐记录已保存！');
-                } catch (e) {
-                    console.error(e);
-                }
+                } catch (e) { console.error(e); }
             };
 
             const loadDataForDate = (dateStr) => {
@@ -1012,49 +1191,89 @@
                         todayData.value = getDefaultTodayData(dateStr);
                         todayMaterials.value = [];
                     }
-                } catch (e) {
-                    console.error(e);
-                }
+                } catch (e) { console.error(e); }
             };
 
             const loadData = () => {
                 try {
                     const savedTheme = localStorage.getItem('pdca_app_theme') || 'navy';
                     applyTheme(savedTheme);
-
                     loadDataForDate(selectedDate.value);
 
                     const liveRaw = localStorage.getItem(LIVE_RECORDS_KEY);
-                    if (liveRaw) {
-                        liveRecords.value = JSON.parse(liveRaw);
-                    }
-                } catch (e) {
-                    console.error(e);
-                }
+                    if (liveRaw) liveRecords.value = JSON.parse(liveRaw);
+                } catch (e) { console.error(e); }
             };
 
-            const weeklyStats = computed(() => {
+            // Automated Weekly Stats
+            const weeklyAutoStats = computed(() => {
+                let workoutDays = 0;
+                let workoutMinutes = 0;
+                let publishedCount = 0;
+                let materialCount = 0;
+                let feelingMap = {};
+
+                const curr = new Date(dateObj.value);
+                for (let i = 0; i < 7; i++) {
+                    const temp = new Date(curr);
+                    temp.setDate(temp.getDate() - temp.getDay() + i);
+                    const y = temp.getFullYear();
+                    const m = String(temp.getMonth() + 1).padStart(2, '0');
+                    const d = String(temp.getDate()).padStart(2, '0');
+                    const dateKey = `${y}-${m}-${d}`;
+
+                    const raw = localStorage.getItem('pdca_app_daily_data_' + dateKey);
+                    if (raw) {
+                        const data = JSON.parse(raw).todayData;
+                        if (data && data.workout && data.workout.completed) {
+                            workoutDays++;
+                            workoutMinutes += (data.workout.duration || 0);
+                            const feel = data.workout.feeling || '良好';
+                            feelingMap[feel] = (feelingMap[feel] || 0) + 1;
+                        }
+                        if (data && data.content) {
+                            publishedCount += (data.content.publishedCount || 0);
+                            materialCount += (data.content.materialCount || 0);
+                        }
+                    }
+                }
+
+                const liveCount = liveRecords.value.length;
+                let totalViewers = 0;
+                liveRecords.value.forEach(r => totalViewers += (r.viewers || 0));
+                const avgViewers = liveCount > 0 ? Math.round(totalViewers / liveCount) : 0;
+
                 return {
-                    completionRate: todayCompletionRate.value > 0 ? 85 : 60,
-                    workoutDays: todayData.value.workout.completed ? 1 : 0,
-                    publishedCount: todayData.value.content.publishedCount || 0,
-                    liveCount: liveRecords.value.length
+                    workoutDays,
+                    workoutMinutes,
+                    publishedCount,
+                    materialCount,
+                    feelingMap,
+                    liveCount,
+                    avgViewers
                 };
             });
 
-            const saveWeeklyNote = () => {
-                showToast('周总结便签已存盘！');
+            const copyWeeklyReport = () => {
+                const s = weeklyAutoStats.value;
+                const text = `📊 PDCA 本周执行简报\n- 运动：完成 ${s.workoutDays}/7 天，总时长 ${s.workoutMinutes}分钟\n- 游戏内容：发布视频 ${s.publishedCount} 条，累积标记素材 ${s.materialCount} 条\n- 直播：已开播 ${s.liveCount} 场，场均场观 ${s.avgViewers}\n- 周末思考：${weeklyNote.value.goodPoints || '无'}`;
+                copyText(text);
+                showToast('已生成并复制本周简报文本！');
             };
 
-            onMounted(() => {
-                loadData();
-            });
+            const saveWeeklyNote = () => showToast('周总结便签已存盘！');
+
+            onMounted(() => { loadData(); });
 
             return {
                 activeTab,
                 showInfoModal,
                 theme,
                 toggleTheme,
+                showAllWorkoutOptions,
+                workoutUrlMap,
+                workoutNameMap,
+                selectedWorkoutUrl,
                 moods,
                 weathers,
                 setMood,
@@ -1066,18 +1285,23 @@
                 navigateDate,
                 goToToday,
                 onDateChange,
-                todayFormatted,
-                todayDayOfWeek,
                 currentDayPlan,
                 isTrainDay,
                 isPublishDay,
                 todayData,
+                quickRawInput,
+                parseQuickInput,
+                exportAllMaterials,
                 newMaterial,
                 todayMaterials,
                 materialFormattedPreview,
                 liveRecords,
+                liveFilterTitle,
+                liveFilterCover,
+                filteredLiveRecords,
                 weeklyNote,
-                weeklyStats,
+                weeklyAutoStats,
+                copyWeeklyReport,
                 todayCompletionRate,
                 randomizeWorkout,
                 copyText,
