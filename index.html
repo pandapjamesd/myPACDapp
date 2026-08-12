@@ -24,16 +24,18 @@
             --theme-accent: #2b3a67;
             --theme-bg-light: #f5f0e6;
             --theme-border: #1e2d4a;
-            --theme-soft-bg: rgba(30, 45, 74, 0.04);
+            --theme-soft-bg: rgba(30, 45, 74, 0.05);
             --theme-highlight: #e2e8f0;
+            --theme-header-bg: #f0e9dc;
         }
 
-        body.theme-wine {
+        .theme-wine, body.theme-wine {
             --theme-main: #7a2021; /* Wine Red Theme */
             --theme-accent: #991b1b;
             --theme-border: #7a2021;
-            --theme-soft-bg: rgba(122, 32, 33, 0.04);
+            --theme-soft-bg: rgba(122, 32, 33, 0.05);
             --theme-highlight: #fecdd3;
+            --theme-header-bg: #f5e8e8;
         }
 
         body {
@@ -128,33 +130,41 @@
         .pb-safe { padding-bottom: env(safe-area-inset-bottom, 1rem); }
     </style>
 </head>
-<body class="antialiased selection:bg-amber-200" :class="{'theme-wine': theme === 'wine'}">
+<body class="antialiased selection:bg-amber-200">
 
-<div id="app" class="max-w-md mx-auto min-h-screen bg-paper-texture flex flex-col relative pb-24 shadow-2xl border-x-2 border-[var(--theme-border)]">
+<div id="app" :class="{'theme-wine': theme === 'wine'}" class="max-w-md mx-auto min-h-screen bg-paper-texture flex flex-col relative pb-24 shadow-2xl border-x-2 border-[var(--theme-border)] transition-all duration-300">
 
     <!-- Vintage Journal Header Bar -->
-    <header class="bg-[#f0e9dc] planner-border-b p-3.5 sticky top-0 z-30 flex justify-between items-center">
+    <header class="planner-border-b p-3.5 sticky top-0 z-30 flex justify-between items-center transition-colors duration-300"
+            :style="{ backgroundColor: theme === 'wine' ? '#f5e8e8' : '#f0e9dc' }">
         <div>
             <div class="flex items-center gap-2">
-                <h1 class="text-2xl font-bold font-script tracking-wide" style="color: var(--theme-main)">
+                <h1 class="text-2xl font-bold font-script tracking-wide transition-colors duration-300" style="color: var(--theme-main)">
                     Daily Planner
                 </h1>
-                <span class="text-xs font-serif-title font-bold px-2 py-0.5 rounded border border-[var(--theme-border)] bg-[#faf6ee]">
+                <span class="text-xs font-serif-title font-bold px-2 py-0.5 rounded border border-[var(--theme-border)] bg-[#faf6ee] transition-colors duration-300">
                     PDCA 手帐
                 </span>
             </div>
-            <p class="text-[10px] font-bold tracking-wider uppercase mt-0.5 opacity-80">
-                DATE: {{ todayFormatted }} · {{ todayDayOfWeek }}
-            </p>
+            <!-- 日期切换与选择器 -->
+            <div class="flex items-center gap-1.5 mt-1">
+                <button @click="navigateDate(-1)" class="px-1.5 py-0.5 text-xs border border-[var(--theme-border)] rounded bg-[#faf6ee] font-bold hover:bg-amber-100" title="前一天">◀</button>
+                <input type="date" v-model="selectedDate" @change="onDateChange" 
+                       class="text-xs font-bold font-mono bg-[#faf6ee] border border-[var(--theme-border)] rounded px-1.5 py-0.5 cursor-pointer outline-none">
+                <button @click="navigateDate(1)" class="px-1.5 py-0.5 text-xs border border-[var(--theme-border)] rounded bg-[#faf6ee] font-bold hover:bg-amber-100" title="后一天">▶</button>
+                <button v-if="!isToday" @click="goToToday" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-200 border border-[var(--theme-border)]">回到今天</button>
+                <span class="text-xs font-bold font-serif-title opacity-80">{{ displayDayOfWeek }}</span>
+            </div>
         </div>
 
         <!-- Theme Switcher & Info -->
         <div class="flex items-center gap-1.5">
             <button @click="toggleTheme" 
-                    class="px-2 py-1 text-xs font-bold planner-btn rounded-lg flex items-center gap-1 shadow-sm"
-                    title="切换主题颜色">
-                <span class="w-3 h-3 rounded-full border border-slate-600" :style="{ backgroundColor: theme === 'navy' ? '#1e2d4a' : '#7a2021' }"></span>
-                <span>{{ theme === 'navy' ? '海军蓝' : '酒红' }}</span>
+                    class="px-2.5 py-1 text-xs font-bold planner-btn rounded-lg flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
+                    title="点击切换主题配色">
+                <span class="w-3.5 h-3.5 rounded-full border border-slate-600 shadow-inner transition-transform duration-300 scale-110" 
+                      :style="{ backgroundColor: theme === 'navy' ? '#1e2d4a' : '#7a2021' }"></span>
+                <span class="font-bold">{{ theme === 'navy' ? '典雅海军蓝' : '复古葡萄酒红' }}</span>
             </button>
 
             <button @click="showInfoModal = true" class="w-7 h-7 rounded-lg planner-btn flex items-center justify-center text-xs">
@@ -162,6 +172,12 @@
             </button>
         </div>
     </header>
+
+    <!-- 历史记录模式提示条 -->
+    <div v-if="!isToday" class="bg-amber-100/90 planner-border-b px-3 py-1 text-center text-xs font-bold text-amber-900 flex justify-between items-center">
+        <span>📜 正在查看历史/未来数据：{{ selectedDate }}</span>
+        <button @click="goToToday" class="underline text-[11px]">返回今天</button>
+    </div>
 
     <!-- Interactive Mood & Weather Bar (Matching Reference Images) -->
     <section class="bg-[#faf6ee] planner-border-b px-3 py-2 flex justify-between items-center text-xs">
@@ -724,9 +740,20 @@
             const showInfoModal = ref(false);
             const theme = ref('navy'); // 'navy' or 'wine'
 
+            const applyTheme = (newTheme) => {
+                theme.value = newTheme;
+                localStorage.setItem('pdca_app_theme', newTheme);
+                if (newTheme === 'wine') {
+                    document.body.classList.add('theme-wine');
+                } else {
+                    document.body.classList.remove('theme-wine');
+                }
+            };
+
             const toggleTheme = () => {
-                theme.value = theme.value === 'navy' ? 'wine' : 'navy';
-                localStorage.setItem('pdca_app_theme', theme.value);
+                const nextTheme = theme.value === 'navy' ? 'wine' : 'navy';
+                applyTheme(nextTheme);
+                showToast(`已切换至【${nextTheme === 'navy' ? '典雅海军蓝' : '复古葡萄酒红'}】主题 ✨`);
             };
 
             // Moods & Weathers from reference images
@@ -753,20 +780,58 @@
                 setTimeout(() => { toast.value.show = false; }, 2200);
             };
 
-            // Dates
-            const todayObj = new Date();
-            const todayFormatted = computed(() => {
-                const y = todayObj.getFullYear();
-                const m = String(todayObj.getMonth() + 1).padStart(2, '0');
-                const d = String(todayObj.getDate()).padStart(2, '0');
-                return `${y}-${m}-${d}`;
+            // 日期处理与导航逻辑
+            const getTodayStr = () => {
+                const d = new Date();
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${y}-${m}-${day}`;
+            };
+
+            const selectedDate = ref(getTodayStr());
+            const isToday = computed(() => selectedDate.value === getTodayStr());
+
+            const dateObj = computed(() => {
+                const parts = selectedDate.value.split('-');
+                if (parts.length === 3) {
+                    return new Date(parts[0], parts[1] - 1, parts[2]);
+                }
+                return new Date();
             });
 
             const daysMap = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-            const todayDayOfWeek = computed(() => daysMap[todayObj.getDay()]);
-            const dayNum = todayObj.getDay();
+            const displayDayOfWeek = computed(() => daysMap[dateObj.value.getDay()]);
+            const dayNum = computed(() => dateObj.value.getDay());
 
-            // Plan schedule
+            const todayFormatted = computed(() => selectedDate.value);
+            const todayDayOfWeek = computed(() => displayDayOfWeek.value);
+
+            // 日期切换方法
+            const navigateDate = (days) => {
+                saveData(false);
+                const current = new Date(dateObj.value);
+                current.setDate(current.getDate() + days);
+                const y = current.getFullYear();
+                const m = String(current.getMonth() + 1).padStart(2, '0');
+                const d = String(current.getDate()).padStart(2, '0');
+                selectedDate.value = `${y}-${m}-${d}`;
+                loadDataForDate(selectedDate.value);
+            };
+
+            const goToToday = () => {
+                saveData(false);
+                selectedDate.value = getTodayStr();
+                loadDataForDate(selectedDate.value);
+                showToast('已返回今天');
+            };
+
+            const onDateChange = () => {
+                saveData(false);
+                loadDataForDate(selectedDate.value);
+            };
+
+            // 依据选定日期的星期自动适配计划
             const planSchedule = {
                 1: { title: 'MONDAY · 周一计划', desc: '饭后短抗阻 + 确定3个选题 + 直播打素材', train: false, publish: false },
                 2: { title: 'TUESDAY · 周二计划', desc: '组训40-60min + 剪辑发布第1条 (不直播)', train: true, publish: true },
@@ -777,38 +842,45 @@
                 0: { title: 'SUNDAY · 周日计划', desc: '饭后短抗阻/休息 + 周复盘 + 储备选题', train: false, publish: false }
             };
 
-            const currentDayPlan = computed(() => planSchedule[dayNum]);
+            const currentDayPlan = computed(() => planSchedule[dayNum.value]);
             const isTrainDay = computed(() => currentDayPlan.value.train);
             const isPublishDay = computed(() => currentDayPlan.value.publish);
 
-            // Today data
-            const todayData = ref({
-                date: todayFormatted.value,
-                mood: 'smile',
-                weather: 'sunny',
-                workout: {
-                    selectedOption: '',
-                    duration: null,
-                    feeling: '良好',
-                    completed: false
-                },
-                content: {
-                    materialCount: 0,
-                    publishedCount: 0,
-                    note: '',
-                    completed: false
-                },
-                live: {
-                    hasLive: (dayNum === 1 || dayNum === 3 || dayNum === 5),
-                    titleStyle: '教学',
-                    coverStyle: '高光',
-                    titleText: '',
-                    viewers: null,
-                    peakOnline: null,
-                    newFollows: null
-                },
-                pdcaReflection: ''
-            });
+            // 任意日期的默认数据生成器
+            const getDefaultTodayData = (dateStr) => {
+                const parts = dateStr.split('-');
+                const d = parts.length === 3 ? new Date(parts[0], parts[1] - 1, parts[2]) : new Date();
+                const dNum = d.getDay();
+                return {
+                    date: dateStr,
+                    mood: 'smile',
+                    weather: 'sunny',
+                    workout: {
+                        selectedOption: '',
+                        duration: null,
+                        feeling: '良好',
+                        completed: false
+                    },
+                    content: {
+                        materialCount: 0,
+                        publishedCount: 0,
+                        note: '',
+                        completed: false
+                    },
+                    live: {
+                        hasLive: (dNum === 1 || dNum === 3 || dNum === 5),
+                        titleStyle: '教学',
+                        coverStyle: '高光',
+                        titleText: '',
+                        viewers: null,
+                        peakOnline: null,
+                        newFollows: null
+                    },
+                    pdcaReflection: ''
+                };
+            };
+
+            const todayData = ref(getDefaultTodayData(selectedDate.value));
 
             const setMood = (mId) => {
                 todayData.value.mood = mId;
@@ -896,21 +968,21 @@
                 saveData();
             };
 
-            const STORAGE_KEY = 'pdca_app_daily_data_' + todayFormatted.value;
             const LIVE_RECORDS_KEY = 'pdca_app_live_history';
 
             const saveData = (notify = false) => {
                 try {
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                    const storageKey = 'pdca_app_daily_data_' + selectedDate.value;
+                    localStorage.setItem(storageKey, JSON.stringify({
                         todayData: todayData.value,
                         todayMaterials: todayMaterials.value
                     }));
 
                     if (todayData.value.live.hasLive && todayData.value.live.viewers) {
                         let records = JSON.parse(localStorage.getItem(LIVE_RECORDS_KEY) || '[]');
-                        records = records.filter(r => r.date !== todayFormatted.value);
+                        records = records.filter(r => r.date !== selectedDate.value);
                         records.unshift({
-                            date: todayFormatted.value,
+                            date: selectedDate.value,
                             titleStyle: todayData.value.live.titleStyle,
                             coverStyle: todayData.value.live.coverStyle,
                             titleText: todayData.value.live.titleText,
@@ -922,7 +994,24 @@
                         liveRecords.value = records;
                     }
 
-                    if (notify) showToast('今日手帐记录已保存！');
+                    if (notify) showToast('手帐记录已保存！');
+                } catch (e) {
+                    console.error(e);
+                }
+            };
+
+            const loadDataForDate = (dateStr) => {
+                try {
+                    const storageKey = 'pdca_app_daily_data_' + dateStr;
+                    const raw = localStorage.getItem(storageKey);
+                    if (raw) {
+                        const parsed = JSON.parse(raw);
+                        todayData.value = parsed.todayData || getDefaultTodayData(dateStr);
+                        todayMaterials.value = parsed.todayMaterials || [];
+                    } else {
+                        todayData.value = getDefaultTodayData(dateStr);
+                        todayMaterials.value = [];
+                    }
                 } catch (e) {
                     console.error(e);
                 }
@@ -930,15 +1019,10 @@
 
             const loadData = () => {
                 try {
-                    const savedTheme = localStorage.getItem('pdca_app_theme');
-                    if (savedTheme) theme.value = savedTheme;
+                    const savedTheme = localStorage.getItem('pdca_app_theme') || 'navy';
+                    applyTheme(savedTheme);
 
-                    const raw = localStorage.getItem(STORAGE_KEY);
-                    if (raw) {
-                        const parsed = JSON.parse(raw);
-                        if (parsed.todayData) todayData.value = parsed.todayData;
-                        if (parsed.todayMaterials) todayMaterials.value = parsed.todayMaterials;
-                    }
+                    loadDataForDate(selectedDate.value);
 
                     const liveRaw = localStorage.getItem(LIVE_RECORDS_KEY);
                     if (liveRaw) {
@@ -976,6 +1060,12 @@
                 setMood,
                 setWeather,
                 toast,
+                selectedDate,
+                isToday,
+                displayDayOfWeek,
+                navigateDate,
+                goToToday,
+                onDateChange,
                 todayFormatted,
                 todayDayOfWeek,
                 currentDayPlan,
