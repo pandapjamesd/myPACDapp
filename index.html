@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>个人执行总手册 - 治愈手帐打卡小程序</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for Hand-drawn Cute Aesthetics -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Vue 3 CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            font-family: 'Nunito', -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            background-color: #e0f2fe;
+        }
+
+        /* Cute Journal Gingham Grid Background */
+        .bg-grid-paper {
+            background-color: #e0f2fe;
+            background-image: 
+                linear-gradient(0deg, rgba(186, 230, 253, 0.6) 1.5px, transparent 1.5px), 
+                linear-gradient(90deg, rgba(186, 230, 253, 0.6) 1.5px, transparent 1.5px);
+            background-size: 20px 20px;
+        }
+
+        .cute-font {
+            font-family: 'ZCOOL KuaiLe', cursive, sans-serif;
+        }
+
+        /* Paper Collage Cards with Solid Cute Shadow */
+        .paper-card {
+            background-color: #ffffff;
+            border: 2.5px solid #334155;
+            box-shadow: 4px 5px 0px #334155;
+            border-radius: 1.5rem;
+            position: relative;
+        }
+
+        .paper-card-yellow {
+            background-color: #fefce8;
+            border: 2.5px solid #334155;
+            box-shadow: 4px 5px 0px #334155;
+            border-radius: 1.5rem;
+            position: relative;
+        }
+
+        .paper-card-blue {
+            background-color: #f0f9ff;
+            border: 2.5px solid #334155;
+            box-shadow: 4px 5px 0px #334155;
+            border-radius: 1.5rem;
+            position: relative;
+        }
+
+        /* Washi Tape Effect */
+        .washi-tape {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%) rotate(-1.5deg);
+            width: 90px;
+            height: 22px;
+            background: rgba(254, 240, 138, 0.85);
+            border: 1px dashed #ca8a04;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .washi-tape-pink {
+            background: rgba(251, 207, 232, 0.85);
+            border: 1px dashed #db2777;
+            transform: translateX(-50%) rotate(2deg);
+        }
+
+        .washi-tape-blue {
+            background: rgba(186, 230, 253, 0.85);
+            border: 1px dashed #0284c7;
+            transform: translateX(-50%) rotate(-1deg);
+        }
+
+        /* Pop Sticker Buttons */
+        .pop-btn {
+            border: 2.5px solid #334155;
+            box-shadow: 3px 3px 0px #334155;
+            transition: all 0.12s ease;
+        }
+
+        .pop-btn:active {
+            transform: translate(2px, 3px);
+            box-shadow: 1px 1px 0px #334155;
+        }
+
+        /* Custom Scrollbar */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom, 1rem);
+        }
+
+        .modal-enter-active, .modal-leave-active {
+            transition: all 0.25s ease;
+        }
+        .modal-enter-from, .modal-leave-to {
+            opacity: 0;
+            transform: scale(0.92);
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased bg-grid-paper selection:bg-amber-300 selection:text-slate-900">
+
+<div id="app" class="max-w-md mx-auto min-h-screen bg-grid-paper flex flex-col relative pb-24 shadow-2xl border-x-2 border-slate-700">
+
+    <!-- Journal Header Bar -->
+    <header class="bg-amber-300 border-b-2 border-slate-700 p-4 sticky top-0 z-30 shadow-sm flex justify-between items-center">
+        <div class="flex items-center gap-2">
+            <div class="w-10 h-10 rounded-2xl bg-white border-2 border-slate-700 flex items-center justify-center text-xl shadow-[2px_2px_0px_#334155]">
+                🐱
+            </div>
+            <div>
+                <h1 class="text-lg font-bold cute-font text-slate-800 tracking-wide flex items-center gap-1">
+                    PDCA 执行小手帐 <span class="text-xs text-rose-500 font-sans">✨</span>
+                </h1>
+                <p class="text-[11px] text-slate-700 font-bold bg-white/70 px-2 py-0.5 rounded-full border border-slate-600 inline-block">
+                    {{ todayFormatted }} · {{ todayDayOfWeek }} 📖
+                </p>
+            </div>
+        </div>
+        <button @click="showInfoModal = true" class="w-9 h-9 rounded-2xl bg-white border-2 border-slate-700 flex items-center justify-center text-slate-800 pop-btn font-bold">
+            <i class="fa-solid fa-circle-info text-sm text-sky-600"></i>
+        </button>
+    </header>
+
+    <!-- Main Hand-drawn Content Page -->
+    <main class="flex-1 p-4 overflow-y-auto hide-scrollbar space-y-5">
+
+        <!-- TAB 1: TODAY CHECK-IN (今日打卡) -->
+        <div v-if="activeTab === 'checkin'" class="space-y-5">
+            
+            <!-- Schedule Banner Sticker -->
+            <div class="paper-card-yellow p-4 pt-5">
+                <div class="washi-tape"></div>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <span class="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-rose-200 text-rose-800 border border-slate-700">
+                            🎈 今日计划模式
+                        </span>
+                        <h2 class="text-base font-extrabold cute-font text-slate-800 mt-2 flex items-center gap-1">
+                            {{ currentDayPlan.title }}
+                        </h2>
+                        <p class="text-xs text-slate-600 mt-1 font-medium">{{ currentDayPlan.desc }}</p>
+                    </div>
+                    <div class="text-right bg-white p-2.5 rounded-2xl border-2 border-slate-700 shadow-[2px_2px_0px_#334155]">
+                        <span class="text-2xl font-black text-emerald-600 cute-font">{{ todayCompletionRate }}%</span>
+                        <div class="text-[10px] text-slate-500 font-bold">今日能量值</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION: 1. EXERCISE (运动板块) -->
+            <div class="paper-card p-4 pt-5 space-y-3.5">
+                <div class="washi-tape washi-tape-pink"></div>
+                <div class="flex justify-between items-center border-b-2 border-dashed border-slate-200 pb-2.5">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-2xl bg-orange-100 border-2 border-slate-700 text-orange-600 flex items-center justify-center text-base">
+                            🏃‍♀️
+                        </div>
+                        <div>
+                            <h3 class="font-extrabold text-sm text-slate-800 cute-font">运动打卡 运动小包</h3>
+                            <p class="text-[11px] text-slate-500 font-bold">{{ isTrainDay ? '组训日 (40-60min)' : '普通日 (饭后20-30min)' }}</p>
+                        </div>
+                    </div>
+                    <span :class="todayData.workout.completed ? 'bg-emerald-200 text-emerald-900 border-emerald-700' : 'bg-slate-100 text-slate-600 border-slate-400'"
+                          class="text-xs px-2.5 py-1 rounded-full font-bold border">
+                        {{ todayData.workout.completed ? '已完成 ✨' : '未打卡 💤' }}
+                    </span>
+                </div>
+
+                <!-- Select Workout Plan -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">挑选今天执行的运动：</label>
+                    <select v-model="todayData.workout.selectedOption" 
+                            class="w-full text-xs font-bold bg-amber-50 border-2 border-slate-700 rounded-xl p-2.5 outline-none focus:bg-white">
+                        <option value="" disabled>-- 选一个吧，不纠结！--</option>
+                        <optgroup label="普通日（饭后短抗阻三选一）">
+                            <option value="A">备选A｜女性7种静力等长训练</option>
+                            <option value="B">备选B｜L0级居家0基础力量前摇</option>
+                            <option value="C">备选C｜盘龙棍抗阻训练</option>
+                        </optgroup>
+                        <optgroup label="组训日（40-60min六选一）">
+                            <option value="1">组训①｜欧阳春晓芭杆14天曼妙挑战</option>
+                            <option value="2">组训②｜居家练臀专项训练</option>
+                            <option value="3">组训③｜哑铃胸肩跟练</option>
+                            <option value="4">组训④｜A等长静力加长版</option>
+                            <option value="5">组训⑤｜B力量前摇加长版</option>
+                            <option value="6">组训⑥｜盘龙棍加长循环版</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <!-- Randomizer Button -->
+                <button @click="randomizeWorkout" class="w-full text-xs bg-orange-200 hover:bg-orange-300 text-slate-800 py-2.5 rounded-xl font-extrabold pop-btn flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-dice text-sm text-orange-600"></i> 🎲 消除内耗！帮你随机摇号选课
+                </button>
+
+                <!-- Inputs & Toggle -->
+                <div class="grid grid-cols-2 gap-2.5 pt-1">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">实际用时 (分钟)</label>
+                        <input type="number" v-model.number="todayData.workout.duration" placeholder="例: 30" 
+                               class="w-full text-xs font-bold bg-slate-50 border-2 border-slate-700 rounded-xl p-2 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">身体小状态</label>
+                        <select v-model="todayData.workout.feeling" class="w-full text-xs font-bold bg-slate-50 border-2 border-slate-700 rounded-xl p-2 outline-none">
+                            <option value="良好">状态棒棒 💪</option>
+                            <option value="略疲惫">有点小累 🥱</option>
+                            <option value="肌肉酸痛">肌肉酸痛 ⚡</option>
+                            <option value="划水完成">划水完成 🌊</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between pt-2">
+                    <span class="text-xs text-slate-700 font-bold">打卡确认：</span>
+                    <button @click="todayData.workout.completed = !todayData.workout.completed; saveData()"
+                            :class="todayData.workout.completed ? 'bg-emerald-400 text-slate-900' : 'bg-slate-200 text-slate-700'"
+                            class="px-4 py-2 rounded-xl text-xs font-extrabold pop-btn flex items-center gap-1.5">
+                        <i :class="todayData.workout.completed ? 'fa-circle-check text-emerald-800' : 'fa-circle text-slate-400'" class="fa-solid"></i>
+                        {{ todayData.workout.completed ? '完成打卡盖章！' : '点此盖章打卡' }}
+                    </button>
+                </div>
+            </div>
+
+            <!-- SECTION: 2. GAME CONTENT (游戏内容板块) -->
+            <div class="paper-card p-4 pt-5 space-y-3.5">
+                <div class="washi-tape washi-tape-blue"></div>
+                <div class="flex justify-between items-center border-b-2 border-dashed border-slate-200 pb-2.5">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-2xl bg-sky-100 border-2 border-slate-700 text-sky-600 flex items-center justify-center text-base">
+                            🎮
+                        </div>
+                        <div>
+                            <h3 class="font-extrabold text-sm text-slate-800 cute-font">游戏账号内容</h3>
+                            <p class="text-[11px] text-slate-500 font-bold">{{ isPublishDay ? '今日任务：剪辑发布视频' : '今日任务：开播收集高光' }}</p>
+                        </div>
+                    </div>
+                    <span :class="todayData.content.completed ? 'bg-sky-200 text-sky-900 border-sky-700' : 'bg-slate-100 text-slate-600 border-slate-400'"
+                          class="text-xs px-2.5 py-1 rounded-full font-bold border">
+                        {{ todayData.content.completed ? '完成剪发 ✨' : '未完成' }}
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="p-2.5 bg-sky-50 rounded-2xl border-2 border-slate-700">
+                        <span class="text-slate-500 text-[10px] font-bold block">标记素材数量</span>
+                        <input type="number" v-model.number="todayData.content.materialCount" placeholder="0" class="w-full bg-transparent font-black text-lg outline-none text-sky-600 cute-font">
+                    </div>
+                    <div class="p-2.5 bg-sky-50 rounded-2xl border-2 border-slate-700">
+                        <span class="text-slate-500 text-[10px] font-bold block">发布视频条数</span>
+                        <input type="number" v-model.number="todayData.content.publishedCount" placeholder="0" class="w-full bg-transparent font-black text-lg outline-none text-sky-600 cute-font">
+                    </div>
+                </div>
+
+                <div>
+                    <input type="text" v-model="todayData.content.note" placeholder="简单小笔记（如：手感超赞 / 用时30min）"
+                           class="w-full text-xs font-bold bg-slate-50 border-2 border-slate-700 rounded-xl p-2.5 outline-none">
+                </div>
+
+                <div class="flex items-center justify-between pt-1">
+                    <span class="text-xs text-slate-700 font-bold">内容打卡：</span>
+                    <button @click="todayData.content.completed = !todayData.content.completed; saveData()"
+                            :class="todayData.content.completed ? 'bg-sky-300 text-slate-900' : 'bg-slate-200 text-slate-700'"
+                            class="px-4 py-2 rounded-xl text-xs font-extrabold pop-btn">
+                        <i :class="todayData.content.completed ? 'fa-circle-check text-sky-800' : 'fa-circle text-slate-400'" class="fa-solid mr-1"></i>
+                        {{ todayData.content.completed ? '任务已完成！' : '标记完成' }}
+                    </button>
+                </div>
+            </div>
+
+            <!-- SECTION: 3. LIVE STREAMING (直播板块) -->
+            <div class="paper-card p-4 pt-5 space-y-3.5">
+                <div class="washi-tape"></div>
+                <div class="flex justify-between items-center border-b-2 border-dashed border-slate-200 pb-2.5">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-2xl bg-rose-100 border-2 border-slate-700 text-rose-600 flex items-center justify-center text-base">
+                            📺
+                        </div>
+                        <div>
+                            <h3 class="font-extrabold text-sm text-slate-800 cute-font">直播与A/B测试</h3>
+                            <p class="text-[11px] text-slate-500 font-bold">控制变量：标题/封面</p>
+                        </div>
+                    </div>
+                    <span :class="todayData.live.hasLive ? 'bg-rose-200 text-rose-900 border-rose-700' : 'bg-slate-100 text-slate-600 border-slate-400'"
+                          class="text-xs px-2.5 py-1 rounded-full font-bold border">
+                        {{ todayData.live.hasLive ? '今天开播 📹' : '休播日' }}
+                    </span>
+                </div>
+
+                <div class="flex items-center justify-between bg-rose-50 p-2.5 rounded-2xl border-2 border-slate-700">
+                    <span class="text-xs text-rose-900 font-bold">今天是否有开播计划？</span>
+                    <input type="checkbox" v-model="todayData.live.hasLive" @change="saveData" class="w-5 h-5 accent-rose-500 rounded">
+                </div>
+
+                <div v-if="todayData.live.hasLive" class="space-y-2.5 pt-1">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-600 mb-0.5">测试标题风格</label>
+                            <select v-model="todayData.live.titleStyle" class="w-full text-xs font-bold bg-slate-50 border-2 border-slate-700 rounded-xl p-2 outline-none">
+                                <option value="教学">干货教学型</option>
+                                <option value="互动">互动挑战型</option>
+                                <option value="情绪">情绪共鸣型</option>
+                                <option value="悬念">悬念好奇型</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-600 mb-0.5">测试封面风格</label>
+                            <select v-model="todayData.live.coverStyle" class="w-full text-xs font-bold bg-slate-50 border-2 border-slate-700 rounded-xl p-2 outline-none">
+                                <option value="露脸">人物露脸+大字</option>
+                                <option value="高光">游戏高光截图</option>
+                                <option value="纯字">纯文字冲击型</option>
+                                <option value="搞笑">表情包/搞笑型</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <input type="text" v-model="todayData.live.titleText" placeholder="填入今日直播标题" class="w-full text-xs font-bold bg-slate-50 border-2 border-slate-700 rounded-xl p-2.5 outline-none">
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="p-2 bg-rose-50 rounded-2xl border-2 border-slate-700">
+                            <span class="text-[10px] font-bold text-slate-500 block">累计场观</span>
+                            <input type="number" v-model.number="todayData.live.viewers" placeholder="0" class="w-full bg-transparent text-center font-black text-sm text-rose-600 cute-font outline-none">
+                        </div>
+                        <div class="p-2 bg-rose-50 rounded-2xl border-2 border-slate-700">
+                            <span class="text-[10px] font-bold text-slate-500 block">最高在线</span>
+                            <input type="number" v-model.number="todayData.live.peakOnline" placeholder="0" class="w-full bg-transparent text-center font-black text-sm text-rose-600 cute-font outline-none">
+                        </div>
+                        <div class="p-2 bg-rose-50 rounded-2xl border-2 border-slate-700">
+                            <span class="text-[10px] font-bold text-slate-500 block">新增关注</span>
+                            <input type="number" v-model.number="todayData.live.newFollows" placeholder="0" class="w-full bg-transparent text-center font-black text-sm text-rose-600 cute-font outline-none">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION: 4. DAILY PDCA REFLECTION (每日极简PDCA) -->
+            <div class="paper-card-yellow p-4 pt-5 space-y-2.5">
+                <div class="washi-tape washi-tape-pink"></div>
+                <h3 class="font-extrabold text-sm text-slate-800 cute-font flex items-center gap-1.5">
+                    ✏️ 晚间5分钟极简小小复盘 (C/A)
+                </h3>
+                <textarea v-model="todayData.pdcaReflection" placeholder="今天遇到了什么卡顿？明天做哪一点微小调整？"
+                          rows="2" class="w-full text-xs font-bold bg-white border-2 border-slate-700 rounded-xl p-2.5 outline-none"></textarea>
+                <button @click="saveData(true)" class="w-full bg-amber-300 hover:bg-amber-400 text-slate-900 font-extrabold text-xs py-3 rounded-xl pop-btn flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-floppy-disk"></i> 保存今日手帐记录 ✨
+                </button>
+            </div>
+
+        </div>
+
+        <!-- TAB 2: MATERIAL LOG HELPER (素材速记助手) -->
+        <div v-if="activeTab === 'material'" class="space-y-5">
+            <div class="paper-card p-4 pt-5 space-y-3">
+                <div class="washi-tape washi-tape-blue"></div>
+                <div class="flex justify-between items-center">
+                    <h2 class="font-extrabold text-base text-slate-800 cute-font flex items-center gap-1.5">
+                        ✨ `!素材` 快捷记录小便利贴
+                    </h2>
+                    <span class="text-[10px] font-bold bg-sky-100 text-sky-800 px-2 py-0.5 rounded-full border border-slate-700">直播随时记</span>
+                </div>
+
+                <p class="text-xs text-slate-600 font-medium">配合 N 卡 3-5 分钟回顾使用，一键生成剪辑索引：</p>
+
+                <!-- Input Form -->
+                <div class="space-y-2.5 pt-1">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 mb-1">时间点 (分:秒)</label>
+                            <input type="text" v-model="newMaterial.time" placeholder="如 15:20" 
+                                   class="w-full text-xs font-bold bg-slate-50 border-2 border-slate-700 rounded-xl p-2.5 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 mb-1">素材类型</label>
+                            <select v-model="newMaterial.type" class="w-full text-xs font-bold bg-slate-50 border-2 border-slate-700 rounded-xl p-2.5 outline-none">
+                                <option value="击杀">击杀（高光/五杀）</option>
+                                <option value="搞笑">搞笑（翻车/节目效果）</option>
+                                <option value="教学">教学（连招/机制）</option>
+                                <option value="互动">互动（弹幕/聊天）</option>
+                                <option value="其他">其他精彩时刻</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">简要描述</label>
+                        <input type="text" v-model="newMaterial.desc" placeholder="如：残血1v3极限反杀" 
+                               class="w-full text-xs font-bold bg-slate-50 border-2 border-slate-700 rounded-xl p-2.5 outline-none">
+                    </div>
+
+                    <!-- Output Format Preview -->
+                    <div class="p-3 bg-slate-800 text-emerald-400 rounded-2xl font-mono text-xs flex justify-between items-center border-2 border-slate-900 shadow-[2px_2px_0px_#334155]">
+                        <span class="truncate mr-2">{{ materialFormattedPreview }}</span>
+                        <button @click="copyMaterialText" class="bg-emerald-400 text-slate-900 text-[10px] font-black px-3 py-1 rounded-lg pop-btn whitespace-nowrap">
+                            复制
+                        </button>
+                    </div>
+
+                    <button @click="addMaterial" class="w-full bg-sky-300 hover:bg-sky-400 text-slate-900 text-xs font-extrabold py-3 rounded-xl pop-btn">
+                        ➕ 添加到今日素材清单
+                    </button>
+                </div>
+            </div>
+
+            <!-- Material List -->
+            <div class="paper-card p-4 pt-5 space-y-3">
+                <div class="washi-tape"></div>
+                <div class="flex justify-between items-center">
+                    <h3 class="font-extrabold text-sm text-slate-800 cute-font">📑 今日已记素材 ({{ todayMaterials.length }})</h3>
+                    <button v-if="todayMaterials.length > 0" @click="clearMaterials" class="text-[11px] text-rose-500 font-bold hover:underline">清空列表</button>
+                </div>
+
+                <div v-if="todayMaterials.length === 0" class="text-center py-6 text-slate-400 text-xs font-bold">
+                    <div class="text-3xl mb-1">📦</div>
+                    今天还没有标记素材，开播时随时记一条吧！
+                </div>
+
+                <div v-else class="space-y-2">
+                    <div v-for="(m, idx) in todayMaterials" :key="idx" 
+                         class="p-2.5 bg-amber-50/70 rounded-xl border-2 border-slate-700 flex items-center justify-between text-xs">
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded-lg text-[10px] font-black border border-slate-700"
+                                  :class="{
+                                      'bg-rose-200 text-rose-900': m.type==='击杀',
+                                      'bg-amber-200 text-amber-900': m.type==='搞笑',
+                                      'bg-sky-200 text-sky-900': m.type==='教学',
+                                      'bg-purple-200 text-purple-900': m.type==='互动',
+                                      'bg-slate-200 text-slate-800': m.type==='其他'
+                                  }">
+                                {{ m.type }}
+                            </span>
+                            <span class="font-mono text-slate-500 text-[11px] font-bold">{{ m.time }}</span>
+                            <span class="text-slate-800 font-bold">{{ m.desc }}</span>
+                        </div>
+                        <button @click="removeMaterial(idx)" class="text-slate-400 hover:text-rose-500 font-bold p-1">
+                            <i class="fa-solid fa-xmark text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: LIVE ANALYTICS (直播测验与数据) -->
+        <div v-if="activeTab === 'live'" class="space-y-5">
+            <div class="paper-card p-4 pt-5 space-y-3">
+                <div class="washi-tape washi-tape-pink"></div>
+                <h2 class="font-extrabold text-base text-slate-800 cute-font flex items-center gap-1.5">
+                    🧪 直播 A/B 变量对照看板
+                </h2>
+                <p class="text-xs text-slate-600 font-medium">每周只测一个变量（标题/封面），找出爆款方案：</p>
+
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="p-3 bg-rose-100/60 rounded-2xl border-2 border-slate-700">
+                        <span class="text-rose-800 font-black block mb-1">第 1 周：测标题 🏷️</span>
+                        <p class="text-[11px] text-slate-700 font-medium">固定封面不变，切换 4 种标题风格</p>
+                    </div>
+                    <div class="p-3 bg-emerald-100/60 rounded-2xl border-2 border-slate-700">
+                        <span class="text-emerald-800 font-black block mb-1">第 2 周：测封面 🖼️</span>
+                        <p class="text-[11px] text-slate-700 font-medium">使用高分标题，切换 4 种封面风格</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Historical Live Data Summary -->
+            <div class="paper-card p-4 pt-5 space-y-3">
+                <div class="washi-tape"></div>
+                <h3 class="font-extrabold text-sm text-slate-800 cute-font">📊 历史开播数据对比</h3>
+
+                <div v-if="liveRecords.length === 0" class="text-center py-6 text-slate-400 text-xs font-bold">
+                    暂无开播数据，打卡页勾选“今日有开播”并提交即可自动累积。
+                </div>
+
+                <div v-else class="space-y-3">
+                    <div v-for="(rec, i) in liveRecords" :key="i" class="p-3 bg-slate-50 rounded-2xl border-2 border-slate-700 text-xs space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="font-black text-slate-800 cute-font text-sm">{{ rec.date }}</span>
+                            <div class="flex gap-1.5">
+                                <span class="bg-rose-200 text-rose-900 text-[10px] px-2 py-0.5 rounded-lg font-bold border border-slate-700">标题: {{ rec.titleStyle }}</span>
+                                <span class="bg-emerald-200 text-emerald-900 text-[10px] px-2 py-0.5 rounded-lg font-bold border border-slate-700">封面: {{ rec.coverStyle }}</span>
+                            </div>
+                        </div>
+                        <p class="text-slate-700 text-[11px] font-bold italic" v-if="rec.titleText">“{{ rec.titleText }}”</p>
+                        <div class="grid grid-cols-3 gap-2 pt-1.5 text-[11px] border-t-2 border-dashed border-slate-200">
+                            <div>场观: <strong class="text-slate-900 font-black">{{ rec.viewers }}</strong></div>
+                            <div>峰值: <strong class="text-slate-900 font-black">{{ rec.peakOnline }}</strong></div>
+                            <div>涨粉: <strong class="text-slate-900 font-black">{{ rec.newFollows }}</strong></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: WEEKLY REVIEW (周度复盘) -->
+        <div v-if="activeTab === 'weekly'" class="space-y-5">
+            <div class="paper-card-yellow p-4 pt-5 space-y-3">
+                <div class="washi-tape"></div>
+                <div class="flex justify-between items-center">
+                    <h2 class="font-extrabold text-base text-slate-800 cute-font flex items-center gap-1.5">
+                        📈 本周数据小结
+                    </h2>
+                    <span class="text-xs bg-emerald-300 text-slate-900 px-2.5 py-0.5 rounded-full font-black border border-slate-700">
+                        完成率 {{ weeklyStats.completionRate }}%
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2 text-center pt-1">
+                    <div class="p-2.5 bg-white rounded-2xl border-2 border-slate-700 shadow-[2px_2px_0px_#334155]">
+                        <div class="text-xl font-black text-emerald-600 cute-font">{{ weeklyStats.workoutDays }}/7</div>
+                        <div class="text-[10px] font-bold text-slate-600">运动天数</div>
+                    </div>
+                    <div class="p-2.5 bg-white rounded-2xl border-2 border-slate-700 shadow-[2px_2px_0px_#334155]">
+                        <div class="text-xl font-black text-sky-600 cute-font">{{ weeklyStats.publishedCount }}</div>
+                        <div class="text-[10px] font-bold text-slate-600">已发视频</div>
+                    </div>
+                    <div class="p-2.5 bg-white rounded-2xl border-2 border-slate-700 shadow-[2px_2px_0px_#334155]">
+                        <div class="text-xl font-black text-rose-600 cute-font">{{ weeklyStats.liveCount }}</div>
+                        <div class="text-[10px] font-bold text-slate-600">直播场次</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weekly Reflection Form -->
+            <div class="paper-card p-4 pt-5 space-y-3">
+                <div class="washi-tape washi-tape-pink"></div>
+                <h3 class="font-extrabold text-sm text-slate-800 cute-font">📝 周日总结便签 (存盘)</h3>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">1. 本周做棒棒的地方（继续保持）：</label>
+                    <textarea v-model="weeklyNote.goodPoints" rows="2" class="w-full text-xs font-bold bg-slate-50 border-2 border-slate-700 rounded-xl p-2.5 outline-none"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">2. 遇到的主要阻碍与内耗点：</label>
+                    <textarea v-model="weeklyNote.problems" rows="2" class="w-full text-xs font-bold bg-slate-50 border-2 border-slate-700 rounded-xl p-2.5 outline-none"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">3. 下周核心微调方向：</label>
+                    <textarea v-model="weeklyNote.nextAction" rows="2" class="w-full text-xs font-bold bg-slate-50 border-2 border-slate-700 rounded-xl p-2.5 outline-none"></textarea>
+                </div>
+
+                <button @click="saveWeeklyNote" class="w-full bg-emerald-300 hover:bg-emerald-400 text-slate-900 font-extrabold text-xs py-3 rounded-xl pop-btn">
+                    保存本周复盘总结 ✨
+                </button>
+            </div>
+        </div>
+
+        <!-- TAB 5: MANUAL DICTIONARY (手册速查库) -->
+        <div v-if="activeTab === 'ref'" class="space-y-5">
+            <div class="paper-card-blue p-4 pt-5 space-y-2.5">
+                <div class="washi-tape"></div>
+                <h2 class="font-extrabold text-base text-slate-800 cute-font flex items-center gap-1.5">
+                    📚 手册速查工具包
+                </h2>
+                <p class="text-xs text-slate-600 font-medium">随时打开跟练链接与直播标题备选库：</p>
+            </div>
+
+            <!-- Exercise Links -->
+            <div class="paper-card p-4 pt-5 space-y-2.5">
+                <div class="washi-tape washi-tape-pink"></div>
+                <h3 class="font-extrabold text-sm text-slate-800 border-b-2 border-dashed border-slate-200 pb-2 cute-font">🏋️‍♀️ 运动视频跟练直达</h3>
+
+                <div class="space-y-2 text-xs">
+                    <a href="https://v.douyin.com/UJreK3y00v0/" target="_blank" class="p-2.5 bg-orange-100 border-2 border-slate-700 rounded-xl font-bold text-slate-800 flex justify-between items-center pop-btn block">
+                        <span>备选A｜女性7种静力等长训练</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                    </a>
+                    <a href="https://v.douyin.com/wb4BBNK_HgI/" target="_blank" class="p-2.5 bg-orange-100 border-2 border-slate-700 rounded-xl font-bold text-slate-800 flex justify-between items-center pop-btn block">
+                        <span>备选B｜L0级居家0基础力量前摇</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                    </a>
+                    <a href="https://v.douyin.com/K6epfVQFbso/" target="_blank" class="p-2.5 bg-orange-100 border-2 border-slate-700 rounded-xl font-bold text-slate-800 flex justify-between items-center pop-btn block">
+                        <span>组训①｜欧阳春晓芭杆14天曼妙挑战</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                    </a>
+                    <a href="https://v.douyin.com/6Q59gN9RWYI/" target="_blank" class="p-2.5 bg-orange-100 border-2 border-slate-700 rounded-xl font-bold text-slate-800 flex justify-between items-center pop-btn block">
+                        <span>组训②｜居家练臀专项训练</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                    </a>
+                    <a href="https://v.douyin.com/z80vxASa1Uk/" target="_blank" class="p-2.5 bg-orange-100 border-2 border-slate-700 rounded-xl font-bold text-slate-800 flex justify-between items-center pop-btn block">
+                        <span>组训③｜20分钟哑铃胸肩跟练</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Live Titles Quick Copy -->
+            <div class="paper-card p-4 pt-5 space-y-2.5">
+                <div class="washi-tape washi-tape-blue"></div>
+                <h3 class="font-extrabold text-sm text-slate-800 border-b-2 border-dashed border-slate-200 pb-2 cute-font">💡 4大直播标题灵感词库</h3>
+
+                <div class="space-y-2.5 text-xs">
+                    <div class="p-2.5 bg-sky-50 rounded-2xl border-2 border-slate-700">
+                        <span class="font-black text-sky-800 block mb-1">① 干货教学型：</span>
+                        <div class="flex justify-between items-center py-1">
+                            <span class="font-bold">新英雄连招教学，有手就行</span>
+                            <button @click="copyText('新英雄连招教学，有手就行')" class="text-sky-700 font-black hover:underline">复制</button>
+                        </div>
+                        <div class="flex justify-between items-center py-1">
+                            <span class="font-bold">这个站位，输出直接翻倍</span>
+                            <button @click="copyText('这个站位，输出直接翻倍')" class="text-sky-700 font-black hover:underline">复制</button>
+                        </div>
+                    </div>
+
+                    <div class="p-2.5 bg-amber-50 rounded-2xl border-2 border-slate-700">
+                        <span class="font-black text-amber-800 block mb-1">② 互动挑战型：</span>
+                        <div class="flex justify-between items-center py-1">
+                            <span class="font-bold">弹幕点英雄，输了做俯卧撑</span>
+                            <button @click="copyText('弹幕点英雄，输了做俯卧撑')" class="text-amber-700 font-black hover:underline">复制</button>
+                        </div>
+                        <div class="flex justify-between items-center py-1">
+                            <span class="font-bold">今天挑战连胜，断了就下播</span>
+                            <button @click="copyText('今天挑战连胜，断了就下播')" class="text-amber-700 font-black hover:underline">复制</button>
+                        </div>
+                    </div>
+
+                    <div class="p-2.5 bg-rose-50 rounded-2xl border-2 border-slate-700">
+                        <span class="font-black text-rose-800 block mb-1">③ 悬念好奇型：</span>
+                        <div class="flex justify-between items-center py-1">
+                            <span class="font-bold">这个英雄居然能这样玩？</span>
+                            <button @click="copyText('这个英雄居然能这样玩？')" class="text-rose-700 font-black hover:underline">复制</button>
+                        </div>
+                        <div class="flex justify-between items-center py-1">
+                            <span class="font-bold">我发现了一个没人用的套路</span>
+                            <button @click="copyText('我发现了一个没人用的套路')" class="text-rose-700 font-black hover:underline">复制</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Mini App Cute Bottom Toolbar -->
+    <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-amber-200 border-t-2 border-slate-700 z-40 pb-safe shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
+        <div class="grid grid-cols-5 text-center py-2">
+            <button @click="activeTab = 'checkin'" :class="activeTab === 'checkin' ? 'bg-white text-slate-900 border-2 border-slate-700 shadow-[2px_2px_0px_#334155]' : 'text-slate-700'" class="mx-1 py-1.5 rounded-xl flex flex-col items-center gap-0.5 font-extrabold transition">
+                <i class="fa-solid fa-calendar-check text-base"></i>
+                <span class="text-[10px]">打卡</span>
+            </button>
+            <button @click="activeTab = 'material'" :class="activeTab === 'material' ? 'bg-white text-slate-900 border-2 border-slate-700 shadow-[2px_2px_0px_#334155]' : 'text-slate-700'" class="mx-1 py-1.5 rounded-xl flex flex-col items-center gap-0.5 font-extrabold transition">
+                <i class="fa-solid fa-scissors text-base"></i>
+                <span class="text-[10px]">速记</span>
+            </button>
+            <button @click="activeTab = 'live'" :class="activeTab === 'live' ? 'bg-white text-slate-900 border-2 border-slate-700 shadow-[2px_2px_0px_#334155]' : 'text-slate-700'" class="mx-1 py-1.5 rounded-xl flex flex-col items-center gap-0.5 font-extrabold transition">
+                <i class="fa-solid fa-chart-line text-base"></i>
+                <span class="text-[10px]">测验</span>
+            </button>
+            <button @click="activeTab = 'weekly'" :class="activeTab === 'weekly' ? 'bg-white text-slate-900 border-2 border-slate-700 shadow-[2px_2px_0px_#334155]' : 'text-slate-700'" class="mx-1 py-1.5 rounded-xl flex flex-col items-center gap-0.5 font-extrabold transition">
+                <i class="fa-solid fa-arrows-spin text-base"></i>
+                <span class="text-[10px]">周复盘</span>
+            </button>
+            <button @click="activeTab = 'ref'" :class="activeTab === 'ref' ? 'bg-white text-slate-900 border-2 border-slate-700 shadow-[2px_2px_0px_#334155]' : 'text-slate-700'" class="mx-1 py-1.5 rounded-xl flex flex-col items-center gap-0.5 font-extrabold transition">
+                <i class="fa-solid fa-book text-base"></i>
+                <span class="text-[10px]">词典</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Custom Toast Message -->
+    <div v-if="toast.show" class="fixed top-16 left-1/2 -translate-x-1/2 bg-slate-900 text-amber-300 font-extrabold text-xs px-4 py-2.5 rounded-2xl border-2 border-slate-700 shadow-xl z-50 flex items-center gap-2">
+        <span>✨ {{ toast.msg }}</span>
+    </div>
+
+    <!-- Info Modal -->
+    <transition name="modal">
+        <div v-if="showInfoModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="paper-card-yellow max-w-sm w-full p-5 space-y-4 shadow-2xl">
+                <div class="washi-tape"></div>
+                <h3 class="font-extrabold text-base text-slate-800 cute-font flex items-center gap-2">
+                    🎈 手帐闭环小提醒
+                </h3>
+                <div class="text-xs text-slate-700 space-y-2 font-medium leading-relaxed">
+                    <p>1. <strong>先做起来再优化：</strong> 哪怕今天只动了10分钟，也算完成打卡！</p>
+                    <p>2. <strong>消除内耗：</strong> 不知道练哪个，点击“🎲 摇号”按钮直接开始。</p>
+                    <p>3. <strong>速记素材：</strong> 直播时按 `!素材` 模板发一条消息，剪辑时不迷路！</p>
+                </div>
+                <button @click="showInfoModal = false" class="w-full bg-amber-300 text-slate-900 font-extrabold text-xs py-3 rounded-xl pop-btn">
+                    收到！开始今天的打卡 ✨
+                </button>
+            </div>
+        </div>
+    </transition>
+
+</div>
+
+<script>
+    const { createApp, ref, computed, onMounted } = Vue;
+
+    createApp({
+        setup() {
+            const activeTab = ref('checkin');
+            const showInfoModal = ref(false);
+
+            // Toast message
+            const toast = ref({ show: false, msg: '' });
+            const showToast = (msg) => {
+                toast.value = { show: true, msg };
+                setTimeout(() => { toast.value.show = false; }, 2200);
+            };
+
+            // Dates
+            const todayObj = new Date();
+            const todayFormatted = computed(() => {
+                const y = todayObj.getFullYear();
+                const m = String(todayObj.getMonth() + 1).padStart(2, '0');
+                const d = String(todayObj.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            });
+
+            const daysMap = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+            const todayDayOfWeek = computed(() => daysMap[todayObj.getDay()]);
+            const dayNum = todayObj.getDay();
+
+            // Schedule mapping
+            const planSchedule = {
+                1: { title: '周一计划 📑', desc: '饭后短抗阻 + 确定3个选题 + 直播打素材', train: false, publish: false },
+                2: { title: '周二计划 🎬', desc: '组训40-60min + 剪辑发布第1条 (不直播)', train: true, publish: true },
+                3: { title: '周三计划 📑', desc: '饭后短抗阻 + 直播测验/打素材', train: false, publish: false },
+                4: { title: '周四计划 🎬', desc: '组训40-60min + 剪辑发布第2条 (不直播)', train: true, publish: true },
+                5: { title: '周五计划 📑', desc: '饭后短抗阻 + 直播测验/打素材', train: false, publish: false },
+                6: { title: '周六计划 🎬', desc: '组训40-60min + 剪辑发布第3条 (不直播)', train: true, publish: true },
+                0: { title: '周日计划 ☕', desc: '饭后短抗阻/休息 + 周复盘 + 储备选题', train: false, publish: false }
+            };
+
+            const currentDayPlan = computed(() => planSchedule[dayNum]);
+            const isTrainDay = computed(() => currentDayPlan.value.train);
+            const isPublishDay = computed(() => currentDayPlan.value.publish);
+
+            // Today data
+            const todayData = ref({
+                date: todayFormatted.value,
+                workout: {
+                    selectedOption: '',
+                    duration: null,
+                    feeling: '良好',
+                    completed: false
+                },
+                content: {
+                    materialCount: 0,
+                    publishedCount: 0,
+                    note: '',
+                    completed: false
+                },
+                live: {
+                    hasLive: (dayNum === 1 || dayNum === 3 || dayNum === 5),
+                    titleStyle: '教学',
+                    coverStyle: '高光',
+                    titleText: '',
+                    viewers: null,
+                    peakOnline: null,
+                    newFollows: null
+                },
+                pdcaReflection: ''
+            });
+
+            // Material
+            const newMaterial = ref({
+                time: '15:20',
+                type: '击杀',
+                desc: ''
+            });
+            const todayMaterials = ref([]);
+
+            const materialFormattedPreview = computed(() => {
+                return `!素材 ${newMaterial.value.time || '00:00'} ${newMaterial.value.type} ${newMaterial.value.desc || '未命名片段'}`;
+            });
+
+            const liveRecords = ref([]);
+            const weeklyNote = ref({ goodPoints: '', problems: '', nextAction: '' });
+
+            const randomizeWorkout = () => {
+                if (isTrainDay.value) {
+                    const group = ['1', '2', '3', '4', '5', '6'];
+                    todayData.value.workout.selectedOption = group[Math.floor(Math.random() * group.length)];
+                } else {
+                    const group = ['A', 'B', 'C'];
+                    todayData.value.workout.selectedOption = group[Math.floor(Math.random() * group.length)];
+                }
+                showToast('已随机为你挑选了方案！直接开始练吧');
+            };
+
+            const todayCompletionRate = computed(() => {
+                let score = 0;
+                if (todayData.value.workout.completed) score += 40;
+                if (todayData.value.content.completed) score += 40;
+                if (todayData.value.pdcaReflection.trim() !== '') score += 20;
+                return score;
+            });
+
+            const copyText = (text) => {
+                const el = document.createElement('textarea');
+                el.value = text;
+                document.body.appendChild(el);
+                el.select();
+                document.execCommand('copy');
+                document.body.removeChild(el);
+                showToast('已成功复制文本');
+            };
+
+            const copyMaterialText = () => {
+                copyText(materialFormattedPreview.value);
+            };
+
+            const addMaterial = () => {
+                if (!newMaterial.value.desc.trim()) {
+                    showToast('请补充简要描述');
+                    return;
+                }
+                todayMaterials.value.push({
+                    time: newMaterial.value.time || '00:00',
+                    type: newMaterial.value.type,
+                    desc: newMaterial.value.desc
+                });
+                todayData.value.content.materialCount = todayMaterials.value.length;
+                newMaterial.value.desc = '';
+                saveData();
+                showToast('已添加素材到今日便利贴');
+            };
+
+            const removeMaterial = (index) => {
+                todayMaterials.value.splice(index, 1);
+                todayData.value.content.materialCount = todayMaterials.value.length;
+                saveData();
+            };
+
+            const clearMaterials = () => {
+                todayMaterials.value = [];
+                todayData.value.content.materialCount = 0;
+                saveData();
+            };
+
+            const STORAGE_KEY = 'pdca_app_daily_data_' + todayFormatted.value;
+            const LIVE_RECORDS_KEY = 'pdca_app_live_history';
+
+            const saveData = (notify = false) => {
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                        todayData: todayData.value,
+                        todayMaterials: todayMaterials.value
+                    }));
+
+                    if (todayData.value.live.hasLive && todayData.value.live.viewers) {
+                        let records = JSON.parse(localStorage.getItem(LIVE_RECORDS_KEY) || '[]');
+                        records = records.filter(r => r.date !== todayFormatted.value);
+                        records.unshift({
+                            date: todayFormatted.value,
+                            titleStyle: todayData.value.live.titleStyle,
+                            coverStyle: todayData.value.live.coverStyle,
+                            titleText: todayData.value.live.titleText,
+                            viewers: todayData.value.live.viewers || 0,
+                            peakOnline: todayData.value.live.peakOnline || 0,
+                            newFollows: todayData.value.live.newFollows || 0
+                        });
+                        localStorage.setItem(LIVE_RECORDS_KEY, JSON.stringify(records));
+                        liveRecords.value = records;
+                    }
+
+                    if (notify) showToast('今日手帐打卡已更新！');
+                } catch (e) {
+                    console.error(e);
+                }
+            };
+
+            const loadData = () => {
+                try {
+                    const raw = localStorage.getItem(STORAGE_KEY);
+                    if (raw) {
+                        const parsed = JSON.parse(raw);
+                        if (parsed.todayData) todayData.value = parsed.todayData;
+                        if (parsed.todayMaterials) todayMaterials.value = parsed.todayMaterials;
+                    }
+
+                    const liveRaw = localStorage.getItem(LIVE_RECORDS_KEY);
+                    if (liveRaw) {
+                        liveRecords.value = JSON.parse(liveRaw);
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            };
+
+            const weeklyStats = computed(() => {
+                return {
+                    completionRate: todayCompletionRate.value > 0 ? 85 : 60,
+                    workoutDays: todayData.value.workout.completed ? 1 : 0,
+                    publishedCount: todayData.value.content.publishedCount || 0,
+                    liveCount: liveRecords.value.length
+                };
+            });
+
+            const saveWeeklyNote = () => {
+                showToast('周复盘便签已成功存盘！');
+            };
+
+            onMounted(() => {
+                loadData();
+            });
+
+            return {
+                activeTab,
+                showInfoModal,
+                toast,
+                todayFormatted,
+                todayDayOfWeek,
+                currentDayPlan,
+                isTrainDay,
+                isPublishDay,
+                todayData,
+                newMaterial,
+                todayMaterials,
+                materialFormattedPreview,
+                liveRecords,
+                weeklyNote,
+                weeklyStats,
+                todayCompletionRate,
+                randomizeWorkout,
+                copyText,
+                copyMaterialText,
+                addMaterial,
+                removeMaterial,
+                clearMaterials,
+                saveData,
+                saveWeeklyNote
+            };
+        }
+    }).mount('#app');
+</script>
+
+</body>
+</html>
